@@ -829,24 +829,9 @@ export function RxNormBrowser({
                         )}
 
                         {/* ── Categorised Jump List ── */}
-                        <div className="bg-white rounded-lg border border-slate-200 p-2 sticky top-0 z-10 shadow-sm space-y-1">
-                          {/* CDSS Row */}
+                        <div className="bg-white rounded-lg border border-slate-200 p-2 sticky top-0 z-10 shadow-sm">
+                          {/* FDA Jump List */}
                           <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white bg-emerald-600 px-2 py-1 rounded mr-0.5 shrink-0">CDSS</span>
-                            {[
-                              { id: 'sec-indications',      label: 'Indications',       color: 'text-emerald-600', show: monograph.indications?.length > 0 },
-                              { id: 'sec-contraindications', label: 'Contraindications', color: 'text-red-600',     show: monograph.contraindications?.length > 0 },
-                              { id: 'sec-medrt-ddi',         label: 'Drug Interactions', color: 'text-amber-600',   show: monograph.medrtDDI?.length > 0 },
-                              { id: 'sec-pgx',              label: 'Pharmacogenomics',  color: 'text-teal-700',    show: monograph.pgxInteractions?.length > 0 },
-                            ].filter(s => s.show).map(s => (
-                              <button key={s.id} onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold hover:bg-emerald-50 transition-colors border border-transparent hover:border-emerald-200', s.color)}>
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
-                          {/* FDA Monograph Row */}
-                          <div className="flex items-center gap-1 flex-wrap border-t border-slate-100 pt-1">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 px-2 py-1 rounded mr-0.5 shrink-0">FDA</span>
                             {[
                               { id: 'sec-dosing',           label: '§2 Dosing',      color: 'text-teal-600',    show: monograph.dosing?.length > 0 },
@@ -872,81 +857,6 @@ export function RxNormBrowser({
 
 
 
-                        {/* ── §7 Drug Interactions ── */}
-                        {monograph.fdaDDI?.length > 0 && (() => {
-                          const severityMeta: Record<string, { badge: string; row: string; label: string }> = {
-                            contraindicated: { badge: 'bg-red-100 text-red-700 border-red-200',    row: 'border-red-100 bg-red-50/30',    label: 'Contraindicated' },
-                            major:           { badge: 'bg-orange-100 text-orange-700 border-orange-200', row: 'border-orange-100 bg-orange-50/20', label: 'Major' },
-                            moderate:        { badge: 'bg-amber-100 text-amber-700 border-amber-200', row: 'border-amber-100 bg-amber-50/20',  label: 'Moderate' },
-                            minor:           { badge: 'bg-green-100 text-green-700 border-green-200', row: 'border-slate-100',                label: 'Minor' },
-                          };
-                          const sevOrder = ['contraindicated','major','moderate','minor','unknown'];
-                          const grouped: Record<string, any[]> = {};
-                          monograph.fdaDDI.forEach((ix: any) => {
-                            const s = (ix.severity || 'unknown').toLowerCase();
-                            (grouped[s] = grouped[s] || []).push(ix);
-                          });
-                          return (
-                            <details id="sec-interactions" className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden group/ix" open>
-                              <summary className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-amber-400 transition-transform group-open/ix:rotate-90" />
-                                <AlertCircle className="w-4 h-4 text-amber-700" />
-                                <h3 className="font-bold text-amber-900 text-sm">§7 Drug Interactions</h3>
-                                <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full ml-1">{monograph.fdaDDI.length} interactions</span>
-                              </summary>
-                              <div className="divide-y divide-slate-100">
-                                {sevOrder.filter(s => grouped[s]).map(sev => {
-                                  const meta = severityMeta[sev] || { badge: 'bg-slate-100 text-slate-600 border-slate-200', row: 'border-slate-100', label: sev };
-                                  const items = grouped[sev];
-                                  return (
-                                    <details key={sev} className="group/sev" open={sev === 'contraindicated' || sev === 'major'}>
-                                      <summary className={cn('px-4 py-2.5 flex items-center gap-2 cursor-pointer select-none hover:bg-slate-50/50', sev === 'contraindicated' ? 'bg-red-50/40' : sev === 'major' ? 'bg-orange-50/30' : '')}>
-                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 transition-transform group-open/sev:rotate-90 shrink-0" />
-                                        <span className={cn('text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border', meta.badge)}>{meta.label}</span>
-                                        <span className="text-[11px] text-slate-500 font-semibold">{items.length} drug{items.length > 1 ? 's' : ''}</span>
-                                      </summary>
-                                      <div className="px-4 pb-3 space-y-2">
-                                        {items.map((ix: any, i: number) => {
-                                          // The 'other' drug — could be drug1 or drug2
-                                          const otherName = monograph.inRxcuis?.includes(ix.drug1_rxcui) || monograph.indications?.find((_: any) => ix.drug1_rxcui === ix.drug1_rxcui)
-                                            ? ix.drug2_name : ix.drug1_name;
-                                          const displayName = otherName || (ix.drug1_name !== ix.drug2_name ? ix.drug2_name : ix.drug1_name);
-                                          return (
-                                            <div key={i} className={cn('rounded-lg border p-3 space-y-1.5', meta.row)}>
-                                              <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-[13px] font-bold text-slate-800">{displayName || `${ix.drug1_name} ↔ ${ix.drug2_name}`}</span>
-                                                {ix.rela && <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded">{ix.rela}</span>}
-                                                {ix.source && <span className="text-[9px] text-slate-400 ml-auto">{ix.source}</span>}
-                                              </div>
-                                              {ix.mechanism && (
-                                                <div className="flex gap-1.5">
-                                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-0.5 shrink-0 w-20">Mechanism</span>
-                                                  <p className="text-[12px] text-slate-600 leading-relaxed">{ix.mechanism}</p>
-                                                </div>
-                                              )}
-                                              {ix.effect_description && (
-                                                <div className="flex gap-1.5">
-                                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-0.5 shrink-0 w-20">Effect</span>
-                                                  <p className="text-[12px] text-slate-600 leading-relaxed">{ix.effect_description}</p>
-                                                </div>
-                                              )}
-                                              {ix.management && (
-                                                <div className="flex gap-1.5 p-2 bg-white/70 rounded border border-slate-100">
-                                                  <span className="text-[9px] font-black uppercase tracking-wider text-teal-500 mt-0.5 shrink-0 w-20">Management</span>
-                                                  <p className="text-[12px] text-teal-800 leading-relaxed font-medium">{ix.management}</p>
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </details>
-                                  );
-                                })}
-                              </div>
-                            </details>
-                          );
-                        })()}
 
                         {/* ═══ FDA Monograph Group Header ═══ */}
                         <div className="flex items-center gap-3 pt-3 mt-2">
@@ -1055,6 +965,26 @@ export function RxNormBrowser({
                               </summary>
                               <div className="px-4 pb-4">
                                 <FdaMonographView rawText={a.effect_name} label={a.source} accentTop="6" />
+                              </div>
+                            </details>
+                          );
+                        })()}
+
+                        {/* ── §7 Drug Interactions ── */}
+                        {monograph.fdaDDI?.length > 0 && (() => {
+                          const best = monograph.fdaDDI[0];
+                          return (
+                            <details id="sec-interactions" className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden group/ix" open>
+                              <summary className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between cursor-pointer select-none">
+                                <div className="flex items-center gap-2">
+                                  <ChevronRight className="w-4 h-4 text-amber-400 transition-transform group-open/ix:rotate-90" />
+                                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                                  <h3 className="font-bold text-amber-900 text-sm">§7 Drug Interactions</h3>
+                                </div>
+                                <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full">FDA §7</span>
+                              </summary>
+                              <div className="px-4 pb-4">
+                                <FdaMonographView rawText={best.effect_description} label={best.source || 'FDA_SPL'} accentTop="7" />
                               </div>
                             </details>
                           );
