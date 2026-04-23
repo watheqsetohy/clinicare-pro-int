@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CLINICare Pro - Secure Access</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    /* Unified gradient — same everywhere, no split panel tones */
+    background: linear-gradient(135deg,
+      hsl(210,55%,91%) 0%,
+      hsl(215,65%,82%) 55%,
+      hsl(220,70%,76%) 100%);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---- Split Layout ---- */
+  .page-wrap {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 560px;   /* left wider, right fixed */
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  /* ---- LEFT — Brand ---- */
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 3rem 2rem;
+  }
+  .left-panel .main-logo {
+    width: min(520px, 88%);            /* 3x original ~180px → ~520px */
+    object-fit: contain;
+    filter: drop-shadow(0 6px 24px rgba(0,40,120,0.14));
+  }
+
+  /* ---- RIGHT — Login ---- */
+  .right-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 2.5rem;
+    /* NO separate background — inherits the same gradient */
+  }
+
+  /* ---- Glass Card — 1.5x ---- */
+  .glass-card {
+    background: rgba(255,255,255,0.62);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border-radius: 1.75rem;
+    border: 1px solid rgba(255,255,255,0.45);
+    box-shadow: 0 20px 60px rgba(0,40,120,0.13), 0 2px 8px rgba(0,0,0,0.05);
+    padding: 3rem 2.5rem;              /* 1.5x original 2rem → 3rem */
+    width: 100%;
+    max-width: 460px;                   /* 1.5x original ~300px → 460px */
+  }
+
+  /* ---- Inputs ---- */
+  .input-wrap { position: relative; margin-bottom: 0; }
+  .input-icon {
+    position: absolute; left: 0.875rem; top: 50%;
+    transform: translateY(-50%);
+    color: hsl(220,30%,55%); font-size: 1.1rem;
+    pointer-events: none; transition: color .2s;
+  }
+  .ifield {
+    width: 100%;
+    padding: 0.8rem 0.875rem 0.8rem 2.7rem;
+    background: rgba(255,255,255,0.58);
+    border: 1px solid hsl(220,30%,72%);
+    border-radius: 0.75rem;
+    color: hsl(220,40%,22%);
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    transition: all .2s; outline: none;
+  }
+  .ifield::placeholder { color: hsl(220,30%,55%); opacity:.9; }
+  .ifield:focus {
+    border-color: hsl(220,72%,54%);
+    box-shadow: 0 0 0 3px hsla(220,72%,54%,0.18);
+    background: rgba(255,255,255,0.82);
+  }
+
+  /* ---- Button ---- */
+  .btn-signin {
+    width: 100%;
+    padding: 0.9rem;
+    background: hsl(220,72%,54%);
+    color: #fff;
+    font-weight: 700; font-size: 0.95rem;
+    border: none; border-radius: 0.875rem;
+    cursor: pointer; letter-spacing: 0.02em;
+    box-shadow: 0 4px 16px hsla(220,72%,54%,.4);
+    transition: background .2s, box-shadow .2s, transform .1s;
+  }
+  .btn-signin:hover { background: hsl(220,72%,62%); box-shadow: 0 6px 20px hsla(220,72%,54%,.5); }
+  .btn-signin:active { transform: scale(0.98); }
+
+  /* ---- Footer ---- */
+  footer {
+    padding: 0.75rem 2rem;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.68rem; color: hsl(220,30%,48%);
+    border-top: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+  }
+  footer a { color: inherit; text-decoration: none; }
+  footer a:hover { color: hsl(220,72%,54%); }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ===== LEFT — Brand ===== -->
+  <div class="left-panel">
+    <img
+      src="../Logos/Login left Main Logo.png"
+      alt="CLINIcare Pro — Integrated Health Care Solutions"
+      class="main-logo"
+    />
+  </div>
+
+  <!-- ===== RIGHT — Login Card ===== -->
+  <div class="right-panel">
+    <div class="glass-card">
+
+      <!-- Card icon -->
+      <div style="text-align:center; margin-bottom:1.75rem;">
+        <img
+          src="../Logos/Figure Transparent only.png"
+          alt="CLINIcare Icon"
+          style="height:64px;width:64px;object-fit:contain;margin:0 auto 1rem;"
+        />
+        <h1 style="font-size:1.75rem;font-weight:800;color:hsl(220,40%,22%);margin:0 0 0.3rem;">Welcome Back</h1>
+        <p style="font-size:0.8rem;color:hsl(220,30%,46%);margin:0;">Securely access your CLINICare Pro dashboard.</p>
+      </div>
+
+      <!-- Form -->
+      <form style="display:flex;flex-direction:column;gap:1rem;">
+
+        <!-- Username -->
+        <div class="input-wrap">
+          <span class="material-icons-outlined input-icon" style="font-size:1.1rem;">person_outline</span>
+          <input class="ifield" id="username" name="username" placeholder="Username" required type="text"/>
+        </div>
+
+        <!-- Password -->
+        <div class="input-wrap">
+          <span class="material-icons-outlined input-icon" style="font-size:1.1rem;">lock_outline</span>
+          <input class="ifield" id="password" name="password" placeholder="Password" required type="password"/>
+        </div>
+
+        <!-- Remember + Forgot -->
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;">
+          <label style="display:flex;align-items:center;gap:0.4rem;color:hsl(220,30%,46%);cursor:pointer;">
+            <input type="checkbox" id="remember-me" style="accent-color:hsl(220,72%,54%);width:14px;height:14px;"/>
+            Remember me
+          </label>
+          <a href="#" style="color:hsl(270,60%,58%);font-weight:600;text-decoration:none;">Forgot password?</a>
+        </div>
+
+        <!-- Sign In -->
+        <button class="btn-signin" type="submit">Sign In</button>
+
+      </form>
+
+      <!-- Support -->
+      <p style="margin-top:1.25rem;text-align:center;font-size:0.75rem;color:hsl(220,30%,52%);">
+        Need help? <a href="#" style="color:hsl(270,60%,58%);font-weight:600;text-decoration:none;">Contact Support</a>
+      </p>
+
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <img src="../Logos/Figure Transparent only.png" alt="" style="height:16px;opacity:0.6;" onerror="this.style.display='none'"/>
+    <span>© 2025 CLINICare Pro Solutions. All rights reserved.</span>
+    <span style="margin:0 0.5rem;">|</span>
+    <a href="#">Privacy Policy</a>
+  </div>
+  <p style="margin:0;">Authorized access only. Activity may be monitored.</p>
+</footer>
+
+</body>
+</html>

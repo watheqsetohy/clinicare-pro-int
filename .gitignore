@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Environment (secrets — never commit)
+.env
+.env.local
+.env.production
+
+# ─── Large Data Directories (already on VPS DB) ───
+MED-R/
+SnomedCT/
+RxNorm_full_06022025/
+EM Medications Screening/
+
+# Database dumps & backups
+*.dump
+*.sql
+*.db
+*.db-wal
+*.db-shm
+*.zip
+*.RRF
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+scratch/
+.claude/

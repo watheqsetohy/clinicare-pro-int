@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Dashboard - CLINICare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-color: #0077C0;
+            --primary-hover-color: #005a8f;
+            --secondary-color: #00A8E0;
+            --accent-color: #E6F4FB;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --bg-light: #f4f7fa;
+            --bg-white: #ffffff;
+            --border-color: #e2e8f0;
+        }
+        .dark {
+            --primary-color: #38bdf8;
+            --primary-hover-color: #0ea5e9;
+            --secondary-color: #7dd3fc;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --bg-light: #1f2937;
+            --bg-white: #111827;
+            --border-color: #374151;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+        }
+        .sidebar-icon {
+            font-size: 24px;
+            margin-right: 16px;
+            transition: transform 0.2s ease-in-out;
+        }
+        .sidebar-link:hover .sidebar-icon {
+            transform: scale(1.1);
+        }
+        .admin-button {
+            background-color: var(--bg-white);
+            color: var(--text-primary);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .admin-button:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 119, 192, 0.1), 0 4px 6px -2px rgba(0, 119, 192, 0.05);
+            color: var(--primary-color);
+        }
+        .dark .admin-button:hover {
+            background-color: #1e40af;
+            color: #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.1), 0 4px 6px -2px rgba(56, 189, 248, 0.05);
+        }
+        .admin-button-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: var(--primary-color);
+            transition: color 0.3s ease;
+        }
+        .admin-button:hover .admin-button-icon {
+            color: var(--secondary-color);
+        }
+        .dark .admin-button:hover .admin-button-icon {
+            color: var(--secondary-color);
+        }
+        .admin-button-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .header {
+            background-color: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .sidebar {
+            background-color: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+        }
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-color);
+            letter-spacing: -0.5px;
+        }
+        .dark .logo-text {
+            color: var(--secondary-color);
+        }
+        .admin-header-text {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .active-sidebar-link {
+            background-color: var(--accent-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .dark .active-sidebar-link {
+            background-color: #1e3a8a;
+            color: var(--primary-color);
+        }
+        .dark .active-sidebar-link .sidebar-icon {
+            color: var(--primary-color);
+        }
+        .dark .sidebar-link {
+            color: #d1d5db;
+        }
+        .dark .sidebar-link:hover {
+            background-color: #1e3a8a;
+            color: #e5e7eb;
+        }
+        .search-input {
+            background-color: var(--bg-light);
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
+        .search-input:focus {
+            background-color: var(--bg-white);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+        .dark .search-input::placeholder {
+            color: #9ca3af;
+        }
+        .notification-icon {
+            position: relative;
+        }
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            border: 1px solid var(--bg-white);
+        }
+        .dark .text-gray-500 {
+            color: #9ca3af;
+        }
+        .dark .hover\:text-\[\#0077C0\]:hover {
+            color: var(--secondary-color);
+        }
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+<script defer="" src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark);
+            const icon = document.getElementById('dark-mode-icon');
+            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+        function adminPage() {
+            return {
+                searchQuery: '',
+                isNotificationsOpen: false,
+                isProfileOpen: false,
+                modules: [
+                    'Define Pharmacist View',
+                    'System Logs',
+                    'Monitor Support Tickets',
+                    'Define MTM Medications',
+                    'Pharmacist Shift Schedule',
+                    'Restricted Medications',
+                    'ATC Code Management',
+                    'Medical File Access',
+                    'User Account Management',
+                    'Role & Permissions',
+                    'System Settings',
+                    'Reporting & Analytics'
+                ],
+                get filteredModules() {
+                    if (this.searchQuery === '') {
+                        return this.modules;
+                    }
+                    return this.modules.filter(module => {
+                        return module.toLowerCase().includes(this.searchQuery.toLowerCase());
+                    });
+                },
+                init() {
+                    if (localStorage.getItem('darkMode') === 'true') {
+                        document.documentElement.classList.add('dark');
+                        document.getElementById('dark-mode-icon').textContent = 'light_mode';
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex h-screen antialiased text-gray-800" x-data="adminPage()" x-init="init()">
+<aside class="sidebar w-72 p-6 space-y-6 flex flex-col justify-between shrink-0 bg-[var(--bg-white)]">
+<div>
+<div class="flex items-center mb-10 pl-2">
+<img alt="CLINICare Logo" class="h-10 mr-3" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAil2epiQZaQc_YFSO2yzx4EmqwuM7XwWNcCeHVAwVQ7wMGACNpBeNhQkWkUE8kqQ85iuoJJCi2pFnjUgY7rkrItC92SVsN3Jtt2Sczz22kI0JwlwMphzX52AIYgJ2z2apvndDyA5zbnR9XJhWt9F1ztI_tE3YyyTfxH0NWlKOMRSgn_3MEV6Vsf4p0O7nKxR-77a8-Nh4PPu43aERK_qDAPBuDmnqSWLD4TN1fdOLFoSpN1kveG5ORsSe5mN4S1Qaipb9VYJhl688"/>
+<span class="logo-text">CLINICare</span>
+</div>
+<nav class="space-y-2">
+<a class="sidebar-link flex items-center px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-[var(--accent-color)] dark:hover:bg-gray-700 hover:text-[var(--primary-color)] rounded-lg transition-colors duration-200" href="#">
+<span class="material-icons sidebar-icon">dashboard</span> User Dashboard
+                </a>
+<a class="sidebar-link flex items-center px-4 py-3 active-sidebar-link rounded-lg" href="#">
+<span class="material-icons sidebar-icon">admin_panel_settings</span> Admin Settings
+                </a>
+</nav>
+</div>
+<div class="text-center pt-4 border-t border-[var(--border-color)]">
+<p class="text-xs text-gray-500 mb-2">Powered by</p>
+<div class="flex justify-center space-x-3 items-center">
+<img alt="Cleopatra Hospitals Group Logo" class="h-7 opacity-80 dark:opacity-70" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWovV-UVZZQ8yTsSq1rLEv72A_4nyDHVwQdMa__h-rhJ6grSGzdUOmRdEpBeN2o1qjUZC_Yh6IT3dHqHNknTQiJo9alPF4GxB3hj4IbcYBIrqGN3wcFgPeLfi2kuIO1GoLNfyFisEOvBE-HiDNrvkofrWdDXbJ5RS_YTc-w4ykX8v0xskA2BzuDwjlXOq_ydJVNFPoQ0AmYFKKEAK8sbU4Bidcez0O5tWwzruEWrFCxSpdyVPH8m_eAO4ue1GTm2EGIg5SWzmyO8M"/>
+<img alt="Nile Badrawy Hospital Emblem" class="h-7 opacity-80 dark:opacity-70" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGp-SJ-twwRExbyq5ja5cy3QlDg7duxIVGu7zNBHejdDY9UWlLQvhlGQu49C4KwiHdP3CQ16kARsZCz4Q9owSJQKQcUIiNTH9sbPUiSo2tHsb9n-iWj8vJDNn0FVbJL8l-vBU7tyMK9wA5sn6_yP6rQ7W585wRswZBu-IawBGIqCe2gxhtnn_ZIJGPgaY8pXTYEVjv-ZxWfOkTHCL4Fzh0S3vBZxzTZC2TmuffmXODgrlngEGZftZ6H28_1Djq2zppuWgfidg1iyU"/>
+</div>
+<p class="text-xs text-gray-400 mt-4">CLINICare Pro © 2025</p>
+</div>
+</aside>
+<div class="flex-1 flex flex-col overflow-hidden">
+<header class="header p-5 flex justify-between items-center shrink-0">
+<h1 class="text-2xl font-semibold admin-header-text">Admin Interface</h1>
+<div class="flex items-center space-x-6">
+<div class="relative">
+<input class="w-80 px-4 py-2.5 rounded-lg focus:outline-none search-input text-sm" placeholder="Search system modules..." type="text" x-model="searchQuery"/>
+<span class="material-icons absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">search</span>
+</div>
+<div class="relative" x-data="{ isOpen: false }">
+<button @click="isOpen = !isOpen" @click.away="isOpen = false" class="relative">
+<span class="material-icons text-gray-500 hover:text-[var(--primary-color)] cursor-pointer text-2xl notification-icon">notifications
+                            <span class="notification-dot"></span>
+</span>
+</button>
+<div class="absolute right-0 mt-2 w-80 bg-[var(--bg-white)] rounded-lg shadow-xl border border-[var(--border-color)] z-10" x-cloak="" x-show="isOpen" x-transition:enter="transition ease-out duration-100" x-transition:enter-end="transform opacity-100 scale-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:leave="transition ease-in duration-75" x-transition:leave-end="transform opacity-0 scale-95" x-transition:leave-start="transform opacity-100 scale-100">
+<div class="p-4 border-b border-[var(--border-color)]">
+<h3 class="text-sm font-semibold text-[var(--text-primary)]">Notifications</h3>
+</div>
+<div class="divide-y divide-[var(--border-color)]">
+<a class="flex items-start p-4 hover:bg-[var(--accent-color)] dark:hover:bg-gray-700" href="#">
+<div class="flex-shrink-0">
+<span class="material-icons text-[var(--primary-color)]">admin_panel_settings</span>
+</div>
+<div class="ml-3 w-0 flex-1">
+<p class="text-sm font-medium text-[var(--text-primary)] dark:text-gray-300">Admin Notification</p>
+<p class="text-xs text-[var(--text-secondary)] mt-1">New system update available.</p>
+<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">2 hours ago</p>
+</div>
+</a>
+<a class="flex items-start p-4 hover:bg-[var(--accent-color)] dark:hover:bg-gray-700" href="#">
+<div class="flex-shrink-0">
+<span class="material-icons text-green-500 dark:text-green-400">gavel</span>
+</div>
+<div class="ml-3 w-0 flex-1">
+<p class="text-sm font-medium text-[var(--text-primary)] dark:text-gray-300">Medication Governance</p>
+<p class="text-xs text-[var(--text-secondary)] mt-1">New policy for review.</p>
+<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">1 day ago</p>
+</div>
+</a>
+</div>
+<a class="block bg-gray-50 dark:bg-gray-800 text-center text-sm font-medium text-[var(--primary-color)] py-2 rounded-b-lg hover:underline" href="#">View all</a>
+</div>
+</div>
+<button class="text-gray-500 hover:text-[var(--primary-color)] cursor-pointer text-2xl" onclick="toggleDarkMode()">
+<span class="material-icons-outlined" id="dark-mode-icon">dark_mode</span>
+</button>
+<div class="relative" x-data="{ isOpen: false }">
+<button @click="isOpen = !isOpen" @keydown.escape.window="isOpen = false" class="flex items-center space-x-3 cursor-pointer">
+<img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-[var(--primary-color)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCly32YkdO_ZyqJ5sF-4QX7i2c0Kl4b6qvoYG4_0ckTe0aBVYRFfjPHLnkuDA1IqWFHOXHI6w_zOY4ll3KtfK1GRAqda29uUmQY9Sfnq2YID60j1Flu6R280SagRE06gB1Osdnec_8wu9PMIDaEbvm5zH9Q0XSinQBqQ5fpyDH8ng6nOCxlIgf1LbNfVakxwFboX1EOyOE6Q-Qp04iDy73dGcQOHDgZTaPlJw5pdvUQMirdRqPNZUszDLG7ZT9VYOU1__RL7e5JDcw"/>
+<div>
+<p class="text-sm font-medium text-[var(--text-primary)]">Admin User</p>
+<p class="text-xs text-[var(--text-secondary)]">Administrator</p>
+</div>
+</button>
+<div @click.away="isOpen = false" class="absolute right-0 mt-2 w-56 bg-[var(--bg-white)] rounded-md shadow-lg py-1 border border-[var(--border-color)] z-10" x-cloak="" x-show="isOpen" x-transition:enter="transition ease-out duration-100" x-transition:enter-end="transform opacity-100 scale-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:leave="transition ease-in duration-75" x-transition:leave-end="transform opacity-0 scale-95" x-transition:leave-start="transform opacity-100 scale-100">
+<a class="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--accent-color)] dark:hover:bg-gray-700 hover:text-[var(--primary-color)]" href="#">
+<span class="material-icons-outlined text-base mr-3">bug_report</span> Add Ticket to Product Manager
+                        </a>
+<a class="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--accent-color)] dark:hover:bg-gray-700 hover:text-[var(--primary-color)]" href="#">
+<span class="material-icons-outlined text-base mr-3">person</span> User Profile
+                        </a>
+<div class="border-t border-[var(--border-color)] my-1"></div>
+<a class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" href="#">
+<span class="material-icons-outlined text-base mr-3">logout</span> Log Out
+                        </a>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 p-8 bg-[var(--bg-light)] overflow-y-auto">
+<div class="mb-6">
+<h2 class="text-2xl font-semibold text-[var(--text-primary)]">System Configuration &amp; Management</h2>
+<p class="text-sm text-[var(--text-secondary)]">Manage critical aspects of the Medication Therapy Management system.</p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+<template :key="module" x-for="module in filteredModules">
+<button class="admin-button" x-cloak="">
+<span class="material-icons admin-button-icon" x-text="getIconForModule(module)"></span>
+<span class="admin-button-text" x-text="module"></span>
+</button>
+</template>
+</div>
+</main>
+</div>
+<script>
+        function getIconForModule(module) {
+            const iconMap = {
+                'Define Pharmacist View': 'visibility',
+                'System Logs': 'description',
+                'Monitor Support Tickets': 'support_agent',
+                'Define MTM Medications': 'medication',
+                'Pharmacist Shift Schedule': 'event_available',
+                'Restricted Medications': 'block',
+                'ATC Code Management': 'settings_suggest',
+                'Medical File Access': 'folder_shared',
+                'User Account Management': 'group_add',
+                'Role & Permissions': 'verified_user',
+                'System Settings': 'build_circle',
+                'Reporting & Analytics': 'bar_chart'
+            };
+            return iconMap[module] || 'settings';
+        }
+    </script>
+
+</body></html>

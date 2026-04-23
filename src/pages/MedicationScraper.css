@@ -1,0 +1,265 @@
+.scraper-app-root {
+  --bg-color: #0b0f19;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(14, 25, 45, 1) 0%, #0b0f19 90%);
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --accent: #8b5cf6;
+  --danger: #ef4444;
+  --success: #10b981;
+  
+  --card-bg: rgba(30, 41, 59, 0.4);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --glass-blur: blur(10px);
+  
+  background: var(--bg-color);
+  background-image: var(--bg-gradient);
+  color: var(--text-main);
+  min-height: 100vh;
+  margin: 0;
+  /* removing overflow-x hidden so it doesn't break parent */
+}
+
+/* Glassmorphism Classes */
+.scraper-app-root .glass-panel {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
+}
+
+.scraper-app-root .glass-header {
+  text-align: center;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+}
+
+.scraper-app-root h1.hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #60a5fa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.05em;
+  line-height: 1.2;
+}
+
+.scraper-app-root h2, .scraper-app-root h3 {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.scraper-app-root .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Buttons */
+.scraper-app-root .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.scraper-app-root .btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.scraper-app-root .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.scraper-app-root .btn-success { background: var(--success); }
+.scraper-app-root .btn-success:hover { background: #059669; }
+
+/* Inputs */
+.scraper-app-root .input-field {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.scraper-app-root .input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Tabs */
+.scraper-app-root .tabs-container {
+  display: flex !important;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+.scraper-app-root .tab {
+  padding: 0.75rem 2rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+}
+.scraper-app-root .tab.active {
+  color: var(--text-main);
+  border-bottom-color: var(--primary);
+}
+.scraper-app-root .tab:hover:not(.active) { color: white; }
+
+/* Table */
+.scraper-app-root .data-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.scraper-app-root .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.scraper-app-root .data-table th, 
+.scraper-app-root .data-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.scraper-app-root .data-table th {
+  background: rgba(15, 23, 42, 0.8);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.scraper-app-root .data-table tr:hover td { background: rgba(255, 255, 255, 0.03); }
+.scraper-app-root .data-table td { font-size: 0.95rem; }
+
+/* Verification Cards */
+.scraper-app-root .verification-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.scraper-app-root .verify-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.scraper-app-root .verify-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 0.75rem;
+}
+
+.scraper-app-root .result-option {
+  padding: 1rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.scraper-app-root .result-option:hover { border-color: rgba(255, 255, 255, 0.2); }
+.scraper-app-root .result-option.selected {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.scraper-app-root .result-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #1e293b;
+}
+
+/* Loader */
+.scraper-app-root .loader {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: scraper-spin 1s linear infinite;
+}
+
+@keyframes scraper-spin {
+  to { transform: rotate(360deg); }
+}
+
+.scraper-app-root .progress-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.scraper-app-root .progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.3s ease;
+}
+
+.scraper-app-root .tag {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.1);
+}
+.scraper-app-root .tag.drugeye { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
+.scraper-app-root .tag.vezeeta { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+.scraper-app-root .tag.google { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+
+.scraper-app-root .dropzone {
+  border: 2px dashed var(--card-border);
+  padding: 3rem;
+  text-align: center;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.scraper-app-root .dropzone:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+}
