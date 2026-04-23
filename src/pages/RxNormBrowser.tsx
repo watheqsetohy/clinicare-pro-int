@@ -87,7 +87,7 @@ export function RxNormBrowser({
   const [conceptLoading, setConceptLoading] = useState(false);
   const [monograph, setMonograph]           = useState<any>(null);
   const [monographLoading, setMonographLoading] = useState(false);
-  const [activeTab, setActiveTab]           = useState<'overview' | 'relations' | 'attributes' | 'monograph'>('overview');
+  const [activeTab, setActiveTab]           = useState<'overview' | 'relations' | 'attributes' | 'cdss' | 'monograph'>('overview');
 
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
@@ -541,6 +541,237 @@ export function RxNormBrowser({
                   </div>
                 )}
 
+                {/* ═══ CDSS Tab — Clinical Decision Support (ingredient-level) ═══ */}
+                {activeTab === 'cdss' && (
+                  <div className="space-y-6 pb-8">
+                    {monographLoading ? (
+                      <div className="flex justify-center py-12"><Activity className="w-8 h-8 text-emerald-500 animate-spin" /></div>
+                    ) : !monograph ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <p className="text-sm font-semibold text-slate-600">No CDSS Data</p>
+                        <p className="text-xs mt-1">Select a drug to view clinical decision support data.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* CDSS Header */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600 px-2.5 py-1 rounded-md">CDSS</span>
+                            <span className="text-[12px] font-bold text-slate-600">Clinical Decision Support</span>
+                          </div>
+                          <div className="flex-1 border-t border-emerald-200" />
+                          <span className="text-[9px] text-slate-400 font-medium">SNOMED · MED-RT · PharmGKB · CPIC</span>
+                        </div>
+
+                        {/* ── Indications (SNOMED CT) ── */}
+                        {monograph.indications?.length > 0 && (
+                          <details id="sec-indications" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group" open>
+                            <summary className="px-4 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between cursor-pointer select-none">
+                              <div className="flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 text-emerald-400 transition-transform group-open:rotate-90" />
+                                <h3 className="font-bold text-emerald-900 text-sm">Indications</h3>
+                                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded">Ingredient-level</span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-full">{monograph.indications.length} SNOMED CT Conditions</span>
+                            </summary>
+                            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                              {monograph.indications.map((ind: any, i: number) => (
+                                <div key={i} className="px-4 py-2.5 hover:bg-slate-50/50 transition-colors flex items-center gap-3">
+                                  <span className={cn(
+                                    "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
+                                    ind.indication_type === 'may_treat' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                                  )}>
+                                    {ind.indication_type?.replace('_', ' ')}
+                                  </span>
+                                  <p className="text-[13px] font-semibold text-slate-800 leading-tight flex-1">{ind.condition_name || ind.snomed_code}</p>
+                                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{ind.snomed_code}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+
+                        {/* ── Contraindications (SNOMED CT) ── */}
+                        {monograph.contraindications?.length > 0 && (
+                          <details id="sec-contraindications" className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden group" open>
+                            <summary className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center justify-between cursor-pointer select-none">
+                              <div className="flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 text-red-400 transition-transform group-open:rotate-90" />
+                                <h3 className="font-bold text-red-900 text-sm">Contraindications</h3>
+                              </div>
+                              <span className="text-[10px] font-semibold text-red-600 bg-red-100/50 px-2 py-0.5 rounded-full">{monograph.contraindications.length} SNOMED CT Conditions</span>
+                            </summary>
+                            <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                              {monograph.contraindications.map((ci: any, i: number) => (
+                                <div key={i} className="px-4 py-2.5 hover:bg-red-50/30 transition-colors flex items-center gap-3">
+                                  <span className={cn(
+                                    "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
+                                    ci.severity === 'absolute' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                                  )}>
+                                    {ci.severity}
+                                  </span>
+                                  <p className="text-[13px] font-semibold text-slate-800 leading-tight flex-1">{ci.condition_name || ci.snomed_code}</p>
+                                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{ci.snomed_code}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+
+                        {/* ── MED-RT Drug-Drug Interactions (ingredient-level) ── */}
+                        {monograph.medrtDDI?.length > 0 && (
+                          <details id="sec-medrt-ddi" className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden group/ddi" open>
+                            <summary className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2 cursor-pointer select-none">
+                              <ChevronRight className="w-4 h-4 text-amber-400 transition-transform group-open/ddi:rotate-90" />
+                              <h3 className="font-bold text-amber-900 text-sm">Drug-Drug Interactions</h3>
+                              <span className="text-[9px] font-medium text-amber-500 bg-amber-100 px-1.5 py-0.5 rounded">MED-RT</span>
+                              <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full ml-auto">{monograph.medrtDDI.length} contraindicated pairs</span>
+                            </summary>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-[12px] border-collapse">
+                                <thead>
+                                  <tr className="bg-amber-50/60">
+                                    <th className="px-4 py-2 text-left font-bold text-amber-800 text-[11px] uppercase tracking-wider border-b border-amber-100">Interacting Drug</th>
+                                    <th className="px-4 py-2 text-left font-bold text-amber-800 text-[11px] uppercase tracking-wider border-b border-amber-100">Severity</th>
+                                    <th className="px-4 py-2 text-left font-bold text-amber-800 text-[11px] uppercase tracking-wider border-b border-amber-100">RXCUI</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                  {monograph.medrtDDI.map((ddi: any, i: number) => {
+                                    const otherName = monograph.inRxcuis?.includes(ddi.drug1_rxcui)
+                                      ? ddi.drug2_name : (ddi.drug1_name || ddi.drug2_name);
+                                    const otherRxcui = monograph.inRxcuis?.includes(ddi.drug1_rxcui)
+                                      ? ddi.drug2_rxcui : ddi.drug1_rxcui;
+                                    return (
+                                      <tr key={i} className="hover:bg-amber-50/30 transition-colors">
+                                        <td className="px-4 py-2 text-slate-800 font-semibold">{otherName}</td>
+                                        <td className="px-4 py-2">
+                                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                                            {ddi.severity}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2 text-slate-400 font-mono text-[11px]">{otherRxcui}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        )}
+
+                        {/* ── PGx Drug-Gene Interactions ── */}
+                        {monograph.pgxInteractions?.length > 0 && (() => {
+                          const pgx = monograph.pgxInteractions;
+                          const actionColors: Record<string, string> = {
+                            avoid:          'border-red-300 bg-red-50',
+                            dose_reduction: 'border-orange-300 bg-orange-50',
+                            alternative:    'border-yellow-300 bg-yellow-50',
+                            monitor:        'border-blue-300 bg-blue-50',
+                            informational:  'border-slate-200 bg-slate-50',
+                          };
+                          const actionBadge: Record<string, string> = {
+                            avoid:          'bg-red-100 text-red-800',
+                            dose_reduction: 'bg-orange-100 text-orange-800',
+                            alternative:    'bg-yellow-100 text-yellow-800',
+                            monitor:        'bg-blue-100 text-blue-800',
+                            informational:  'bg-slate-100 text-slate-600',
+                          };
+                          const cpicColor: Record<string, string> = {
+                            A: 'bg-emerald-600 text-white',
+                            B: 'bg-blue-600 text-white',
+                            C: 'bg-amber-500 text-white',
+                            D: 'bg-slate-400 text-white',
+                          };
+                          const cpicA  = pgx.filter((g: any) => g.cpic_level === 'A').length;
+                          const fdaBio = pgx.filter((g: any) => g.fda_biomarker).length;
+                          return (
+                            <details id="sec-pgx" className="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden group/pgx" open>
+                              <summary className="px-4 py-3 bg-teal-50 border-b border-teal-100 flex items-center gap-2 cursor-pointer select-none">
+                                <ChevronRight className="w-4 h-4 text-teal-400 transition-transform group-open/pgx:rotate-90" />
+                                <h3 className="font-bold text-teal-900 text-sm">Pharmacogenomics — Drug-Gene Interactions</h3>
+                                <div className="ml-auto flex items-center gap-1.5">
+                                  {cpicA > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">{cpicA} CPIC-A</span>}
+                                  {fdaBio > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{fdaBio} FDA Biomarker</span>}
+                                  <span className="text-[10px] text-teal-600 font-medium">{pgx.length} genes</span>
+                                </div>
+                              </summary>
+                              <div className="p-4 space-y-3">
+                                {pgx.map((geneGroup: any) => {
+                                  const action = geneGroup.top_action || 'informational';
+                                  return (
+                                    <div key={geneGroup.gene_symbol}
+                                      className={`rounded-xl border-2 p-3 ${actionColors[action] || actionColors.informational}`}>
+                                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                        <span className="text-[13px] font-black text-slate-900">{geneGroup.gene_symbol}</span>
+                                        {geneGroup.gene_name && geneGroup.gene_name !== geneGroup.gene_symbol && (
+                                          <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">{geneGroup.gene_name}</span>
+                                        )}
+                                        <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
+                                          {geneGroup.cpic_level && (
+                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${cpicColor[geneGroup.cpic_level] || 'bg-slate-300 text-white'}`}>
+                                              CPIC {geneGroup.cpic_level}
+                                            </span>
+                                          )}
+                                          {geneGroup.fda_biomarker && (
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white">FDA ✓</span>
+                                          )}
+                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${actionBadge[action] || actionBadge.informational}`}>
+                                            {action.replace('_', ' ')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        {geneGroup.entries.filter((e: any) => e.phenotype || e.effect || e.recommendation || e.raw_text).map((e: any, i: number) => (
+                                          <div key={i} className="bg-white/70 rounded-lg px-3 py-2 border border-white/80">
+                                            <div className="flex flex-wrap gap-1.5 mb-1">
+                                              {e.interaction_type && <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400">{e.interaction_type}</span>}
+                                              {e.phenotype && (
+                                                <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-100">
+                                                  {e.phenotype.replace(/_/g, ' ')}
+                                                </span>
+                                              )}
+                                              {e.evidence_level && <span className="text-[9px] text-slate-400 ml-auto font-mono">Ev: {e.evidence_level}</span>}
+                                            </div>
+                                            {e.effect && <p className="text-[11px] text-slate-700 leading-snug">{e.effect}</p>}
+                                            {e.recommendation && (
+                                              <p className="text-[11px] font-semibold text-slate-800 mt-1 leading-snug">
+                                                📌 {e.recommendation.substring(0, 300)}
+                                              </p>
+                                            )}
+                                            {!e.effect && !e.recommendation && e.raw_text && (
+                                              <p className="text-[11px] text-slate-600 leading-snug">{e.raw_text.substring(0, 250)}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {geneGroup.entries.every((e: any) => !e.phenotype && !e.effect && !e.recommendation && !e.raw_text) && (
+                                          <div className="text-[11px] text-slate-500 px-2">
+                                            Type: {geneGroup.entries[0]?.interaction_type || '—'} · Sources: {[...new Set(geneGroup.entries.map((e: any) => e.source))].join(', ')}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                <p className="text-[10px] text-slate-400 text-center pt-1">
+                                  Sources: PharmGKB · CPIC Guidelines · FDA PGx Biomarker Table
+                                </p>
+                              </div>
+                            </details>
+                          );
+                        })()}
+
+                        {/* No data message */}
+                        {!monograph.indications?.length && !monograph.contraindications?.length && !monograph.medrtDDI?.length && !monograph.pgxInteractions?.length && (
+                          <div className="text-center py-12 text-slate-400">
+                            <p className="text-sm font-semibold text-slate-600">No CDSS Data Available</p>
+                            <p className="text-xs mt-1">No ingredient-level clinical decision support data found for this drug.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Clinical Monograph */}
                 {activeTab === 'monograph' && (
                   <div className="space-y-6 pb-8">
@@ -605,7 +836,7 @@ export function RxNormBrowser({
                             {[
                               { id: 'sec-indications',      label: 'Indications',       color: 'text-emerald-600', show: monograph.indications?.length > 0 },
                               { id: 'sec-contraindications', label: 'Contraindications', color: 'text-red-600',     show: monograph.contraindications?.length > 0 },
-                              { id: 'sec-interactions',      label: 'Drug Interactions', color: 'text-amber-600',   show: monograph.interactions?.length > 0 },
+                              { id: 'sec-medrt-ddi',         label: 'Drug Interactions', color: 'text-amber-600',   show: monograph.medrtDDI?.length > 0 },
                               { id: 'sec-pgx',              label: 'Pharmacogenomics',  color: 'text-teal-700',    show: monograph.pgxInteractions?.length > 0 },
                             ].filter(s => s.show).map(s => (
                               <button key={s.id} onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -618,10 +849,10 @@ export function RxNormBrowser({
                           <div className="flex items-center gap-1 flex-wrap border-t border-slate-100 pt-1">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 px-2 py-1 rounded mr-0.5 shrink-0">FDA</span>
                             {[
-                              { id: 'sec-indications',      label: '§1 Indications', color: 'text-emerald-600', show: monograph.indications?.length > 0 },
                               { id: 'sec-dosing',           label: '§2 Dosing',      color: 'text-teal-600',    show: monograph.dosing?.length > 0 },
                               { id: 'sec-ci-text',          label: '§4 CI',          color: 'text-red-500',     show: monograph.contraindicationText?.length > 0 },
                               { id: 'sec-adverse',          label: '§6 ADR',         color: 'text-rose-600',    show: monograph.adverse?.length > 0 },
+                              { id: 'sec-interactions',     label: '§7 DDI',         color: 'text-amber-600',   show: monograph.fdaDDI?.length > 0 },
                               { id: 'sec-reproductive',     label: '§8 Pregnancy',   color: 'text-purple-600',  show: monograph.reproductive?.length > 0 },
                               { id: 'sec-pediatric',        label: '§8.4 Peds',      color: 'text-sky-600',     show: monograph.pediatric?.length > 0 },
                               { id: 'sec-geriatric',        label: '§8.5 Geri',      color: 'text-slate-600',   show: monograph.geriatric?.length > 0 },
@@ -639,75 +870,10 @@ export function RxNormBrowser({
                           </div>
                         </div>
 
-                        {/* ═══ CDSS Group Header ═══ */}
-                        <div className="flex items-center gap-3 pt-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600 px-2.5 py-1 rounded-md">CDSS</span>
-                            <span className="text-[12px] font-bold text-slate-600">Clinical Decision Support</span>
-                          </div>
-                          <div className="flex-1 border-t border-emerald-200" />
-                          <span className="text-[9px] text-slate-400 font-medium">SNOMED · RxNorm · MED-RT</span>
-                        </div>
 
-                        {/* ── Indications (SNOMED CT) ── */}
-                        {monograph.indications?.length > 0 && (
-                          <details id="sec-indications" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group" open>
-                            <summary className="px-4 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between cursor-pointer select-none">
-                              <div className="flex items-center gap-2">
-                                <ChevronRight className="w-4 h-4 text-emerald-400 transition-transform group-open:rotate-90" />
-                                <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                                <h3 className="font-bold text-emerald-900 text-sm">Indications</h3>
-                                <span className="text-[9px] font-medium text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded">Ingredient-level</span>
-                              </div>
-                              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-full">{monograph.indications.length} SNOMED CT Conditions</span>
-                            </summary>
-                            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                              {monograph.indications.map((ind: any, i: number) => (
-                                <div key={i} className="px-4 py-2.5 hover:bg-slate-50/50 transition-colors flex items-center gap-3">
-                                  <span className={cn(
-                                    "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
-                                    ind.indication_type === 'may_treat' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
-                                  )}>
-                                    {ind.indication_type?.replace('_', ' ')}
-                                  </span>
-                                  <p className="text-[13px] font-semibold text-slate-800 leading-tight flex-1">{ind.condition_name || ind.snomed_code}</p>
-                                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{ind.snomed_code}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
-
-                        {/* ── Contraindications (SNOMED CT) ── */}
-                        {monograph.contraindications?.length > 0 && (
-                          <details id="sec-contraindications" className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden group" open>
-                            <summary className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center justify-between cursor-pointer select-none">
-                              <div className="flex items-center gap-2">
-                                <ChevronRight className="w-4 h-4 text-red-400 transition-transform group-open:rotate-90" />
-                                <Shield className="w-4 h-4 text-red-700" />
-                                <h3 className="font-bold text-red-900 text-sm">Contraindications</h3>
-                              </div>
-                              <span className="text-[10px] font-semibold text-red-600 bg-red-100/50 px-2 py-0.5 rounded-full">{monograph.contraindications.length} SNOMED CT Conditions</span>
-                            </summary>
-                            <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-                              {monograph.contraindications.map((ci: any, i: number) => (
-                                <div key={i} className="px-4 py-2.5 hover:bg-red-50/30 transition-colors flex items-center gap-3">
-                                  <span className={cn(
-                                    "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0",
-                                    ci.severity === 'absolute' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                                  )}>
-                                    {ci.severity}
-                                  </span>
-                                  <p className="text-[13px] font-semibold text-slate-800 leading-tight flex-1">{ci.condition_name || ci.snomed_code}</p>
-                                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{ci.snomed_code}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
 
                         {/* ── §7 Drug Interactions ── */}
-                        {monograph.interactions?.length > 0 && (() => {
+                        {monograph.fdaDDI?.length > 0 && (() => {
                           const severityMeta: Record<string, { badge: string; row: string; label: string }> = {
                             contraindicated: { badge: 'bg-red-100 text-red-700 border-red-200',    row: 'border-red-100 bg-red-50/30',    label: 'Contraindicated' },
                             major:           { badge: 'bg-orange-100 text-orange-700 border-orange-200', row: 'border-orange-100 bg-orange-50/20', label: 'Major' },
@@ -716,7 +882,7 @@ export function RxNormBrowser({
                           };
                           const sevOrder = ['contraindicated','major','moderate','minor','unknown'];
                           const grouped: Record<string, any[]> = {};
-                          monograph.interactions.forEach((ix: any) => {
+                          monograph.fdaDDI.forEach((ix: any) => {
                             const s = (ix.severity || 'unknown').toLowerCase();
                             (grouped[s] = grouped[s] || []).push(ix);
                           });
@@ -726,7 +892,7 @@ export function RxNormBrowser({
                                 <ChevronRight className="w-4 h-4 text-amber-400 transition-transform group-open/ix:rotate-90" />
                                 <AlertCircle className="w-4 h-4 text-amber-700" />
                                 <h3 className="font-bold text-amber-900 text-sm">§7 Drug Interactions</h3>
-                                <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full ml-1">{monograph.interactions.length} interactions</span>
+                                <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full ml-1">{monograph.fdaDDI.length} interactions</span>
                               </summary>
                               <div className="divide-y divide-slate-100">
                                 {sevOrder.filter(s => grouped[s]).map(sev => {
@@ -1185,111 +1351,6 @@ export function RxNormBrowser({
                           );
                         })()}
 
-                        {/* ── 🧬 PGx Drug-Gene Interactions ── */}
-                        {monograph.pgxInteractions?.length > 0 && (() => {
-                          const pgx = monograph.pgxInteractions;
-                          const actionColors: Record<string, string> = {
-                            avoid:          'border-red-300 bg-red-50',
-                            dose_reduction: 'border-orange-300 bg-orange-50',
-                            alternative:    'border-yellow-300 bg-yellow-50',
-                            monitor:        'border-blue-300 bg-blue-50',
-                            informational:  'border-slate-200 bg-slate-50',
-                          };
-                          const actionBadge: Record<string, string> = {
-                            avoid:          'bg-red-100 text-red-800',
-                            dose_reduction: 'bg-orange-100 text-orange-800',
-                            alternative:    'bg-yellow-100 text-yellow-800',
-                            monitor:        'bg-blue-100 text-blue-800',
-                            informational:  'bg-slate-100 text-slate-600',
-                          };
-                          const cpicColor: Record<string, string> = {
-                            A: 'bg-emerald-600 text-white',
-                            B: 'bg-blue-600 text-white',
-                            C: 'bg-amber-500 text-white',
-                            D: 'bg-slate-400 text-white',
-                          };
-                          const cpicA  = pgx.filter((g: any) => g.cpic_level === 'A').length;
-                          const fdaBio = pgx.filter((g: any) => g.fda_biomarker).length;
-                          return (
-                            <details id="sec-pgx" className="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden group/pgx" open>
-                              <summary className="px-4 py-3 bg-teal-50 border-b border-teal-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-teal-400 transition-transform group-open/pgx:rotate-90" />
-                                <Dna className="w-4 h-4 text-teal-700" />
-                                <h3 className="font-bold text-teal-900 text-sm">Pharmacogenomics — Drug-Gene Interactions</h3>
-                                <div className="ml-auto flex items-center gap-1.5">
-                                  {cpicA > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">{cpicA} CPIC-A</span>}
-                                  {fdaBio > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{fdaBio} FDA Biomarker</span>}
-                                  <span className="text-[10px] text-teal-600 font-medium">{pgx.length} genes</span>
-                                </div>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {pgx.map((geneGroup: any) => {
-                                  const action = geneGroup.top_action || 'informational';
-                                  return (
-                                    <div key={geneGroup.gene_symbol}
-                                      className={`rounded-xl border-2 p-3 ${actionColors[action] || actionColors.informational}`}>
-                                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                        <span className="text-[13px] font-black text-slate-900">{geneGroup.gene_symbol}</span>
-                                        {geneGroup.gene_name && geneGroup.gene_name !== geneGroup.gene_symbol && (
-                                          <span className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]">{geneGroup.gene_name}</span>
-                                        )}
-                                        <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-                                          {geneGroup.cpic_level && (
-                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${cpicColor[geneGroup.cpic_level] || 'bg-slate-300 text-white'}`}>
-                                              CPIC {geneGroup.cpic_level}
-                                            </span>
-                                          )}
-                                          {geneGroup.fda_biomarker && (
-                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white">FDA ✓</span>
-                                          )}
-                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${actionBadge[action] || actionBadge.informational}`}>
-                                            {action.replace('_', ' ')}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        {geneGroup.entries.filter((e: any) => e.phenotype || e.effect || e.recommendation || e.raw_text).map((e: any, i: number) => (
-                                          <div key={i} className="bg-white/70 rounded-lg px-3 py-2 border border-white/80">
-                                            <div className="flex flex-wrap gap-1.5 mb-1">
-                                              {e.interaction_type && (
-                                                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400">{e.interaction_type}</span>
-                                              )}
-                                              {e.phenotype && (
-                                                <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-100">
-                                                  {e.phenotype.replace(/_/g, ' ')}
-                                                </span>
-                                              )}
-                                              {e.evidence_level && (
-                                                <span className="text-[9px] text-slate-400 ml-auto font-mono">Ev: {e.evidence_level}</span>
-                                              )}
-                                            </div>
-                                            {e.effect && <p className="text-[11px] text-slate-700 leading-snug">{e.effect}</p>}
-                                            {e.recommendation && (
-                                              <p className="text-[11px] font-semibold text-slate-800 mt-1 leading-snug">
-                                                📌 {e.recommendation.substring(0, 300)}
-                                              </p>
-                                            )}
-                                            {!e.effect && !e.recommendation && e.raw_text && (
-                                              <p className="text-[11px] text-slate-600 leading-snug">{e.raw_text.substring(0, 250)}</p>
-                                            )}
-                                          </div>
-                                        ))}
-                                        {geneGroup.entries.every((e: any) => !e.phenotype && !e.effect && !e.recommendation && !e.raw_text) && (
-                                          <div className="text-[11px] text-slate-500 px-2">
-                                            Type: {geneGroup.entries[0]?.interaction_type || '—'} · Sources: {[...new Set(geneGroup.entries.map((e: any) => e.source))].join(', ')}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                                <p className="text-[10px] text-slate-400 text-center pt-1">
-                                  Sources: FDA SPL §12 · PharmGKB · CPIC Guidelines · FDA PGx Biomarker Table
-                                </p>
-                              </div>
-                            </details>
-                          );
-                        })()}
 
                   </div>
                 )}

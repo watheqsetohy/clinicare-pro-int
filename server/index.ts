@@ -1564,11 +1564,18 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
       ? [ciRawRes.rows.reduce((best: any, cur: any) => (cur.raw_text || '').length > (best.raw_text || '').length ? cur : best)]
       : [];
 
-    // Drug Interactions: dedup by sorted pair key, keep most informative
-    const interactions = dedupBest(
-      interactionRes.rows,
+    // Drug Interactions: split by source
+    // MED-RT = structured ingredient-level DDI pairs (CDSS)
+    const medrtDDI = dedupBest(
+      interactionRes.rows.filter((r: any) => r.source === 'MED-RT'),
       (r: any) => [r.drug1_rxcui, r.drug2_rxcui].sort().join('||'),
       (r: any) => (r.mechanism || '').length + (r.effect_description || '').length + (r.management || '').length
+    );
+    // FDA_SPL = §7 Drug Interactions raw text (FDA Monograph)
+    const fdaDDI = dedupBest(
+      interactionRes.rows.filter((r: any) => r.source === 'FDA_SPL'),
+      (r: any) => [r.drug1_rxcui, r.drug2_rxcui].sort().join('||'),
+      (r: any) => (r.effect_description || '').length
     );
 
     // Storage: keep 1 entry — longest combined text
@@ -1623,7 +1630,7 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
     res.json({
       ingredientName, inRxcuis, scdfName,
       adverse, reproductive, geriatric, pediatric, contraindicationText,
-      interactions, storage, description, toxicology, clinicalStudies, drugClass,
+      medrtDDI, fdaDDI, storage, description, toxicology, clinicalStudies, drugClass,
       pk, dosing, indications, contraindications, pgxInteractions
     });
   } catch (err) {
