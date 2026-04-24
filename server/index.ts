@@ -513,7 +513,7 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
         UNION
         SELECT r.destination_id, a2.origin_id, depth + 1 FROM snomed_relationship r INNER JOIN a2 ON r.source_id = a2.id WHERE r.type_id = '116680003' AND r.active = 1 AND depth < 3
       )
-      SELECT c.id as condition_id, c.term, c.snomed_code, c.onset, c.logs, c.severity, c.acuity 
+      SELECT c.id as condition_id, c.term, c.snomed_code, c.onset, c.logs, c.severity, c.acuity, c.status 
       FROM conditions c
       WHERE c.patient_id = $2 AND (
         c.snomed_code = $1 OR c.snomed_code IN (
@@ -527,7 +527,15 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
     
     let mergedLogs: any[] = [];
     
-    // Find the single absolute oldest record to serve as the true Clinical Origin
+    // ── HPI Entries: One per condition in the cluster, using its own onset date ──
+    // Sort rows by onset descending (newest first) for the chronological view
+    const sortedRows = [...rows].sort((a, b) => {
+      const ta = a.onset ? new Date(a.onset).getTime() : 0;
+      const tb = b.onset ? new Date(b.onset).getTime() : 0;
+      return tb - ta; // newest first
+    });
+
+    // Find the absolute oldest row for the Clinical Origin marker
     let oldestRow: any = null;
     let oldestTime = Infinity;
     for (const row of rows) {
@@ -540,28 +548,33 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
       }
     }
 
-    if (oldestRow) {
-       mergedLogs.push({
-         date: new Date(oldestTime).toISOString(),
-         action: 'Clinical Origin',
-         note: 'Documented Disease Onset',
-         user: 'System',
-         condition_term: oldestRow.term,
-         condition_code: oldestRow.snomed_code,
-         severity: oldestRow.severity,
-         acuity: oldestRow.acuity,
-         isOnset: true
-       });
+    // Generate per-condition HPI entries
+    for (const row of sortedRows) {
+      const isOldest = oldestRow && row.condition_id === oldestRow.condition_id;
+      const isActive = row.status === 'Active';
+
+      mergedLogs.push({
+        date: row.onset ? new Date(row.onset).toISOString() : new Date().toISOString(),
+        system_date: row.onset ? new Date(row.onset).toISOString() : new Date().toISOString(),
+        action: isOldest ? 'Clinical Origin' : (isActive ? 'Added & Activated' : 'HPI Entry'),
+        note: isOldest ? 'Documented Disease Onset' : (isActive ? 'Current active diagnosis' : `Historical clinical record`),
+        user: 'System',
+        condition_term: row.term,
+        condition_code: row.snomed_code,
+        severity: row.severity,
+        acuity: row.acuity,
+        isOnset: isOldest,
+        isHpiConditionEntry: true // marker to distinguish from raw logs
+      });
     }
-      
-    // Re-iterate over rows to gather the non-origin logs
+
+    // ── Raw Logs: Merged from all conditions for the System Audit Log tab ──
     for (const row of rows) {
       if (row.logs && Array.isArray(row.logs)) {
         for (const log of row.logs) {
            mergedLogs.push({
              ...log,
              // For HPI Entry logs, use the injected condition's own identity
-             // (stored at creation time) instead of the host condition's data
              condition_term: (log.action === 'HPI Entry' && log.hpi_term) ? log.hpi_term : row.term,
              condition_code: (log.action === 'HPI Entry' && log.hpi_code) ? log.hpi_code : row.snomed_code,
              severity: (log.action === 'HPI Entry' && log.hpi_severity) ? log.hpi_severity : row.severity,

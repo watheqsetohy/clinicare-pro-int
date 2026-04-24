@@ -925,14 +925,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                           });
                           
                           const filteredLogs = logViewTab === 'chronological' 
-                                ? sortedLogs.filter(log =>
-                                    log.action !== 'Added as Inactive' &&
-                                    log.action !== 'Deactivated' &&
-                                    log.action !== 'Superseded' &&
-                                    log.action !== 'Status Updated' &&
-                                    log.action !== 'Reactivated'
-                                  )
-                                : sortedLogs;
+                                ? sortedLogs.filter(log => log.isHpiConditionEntry === true)
+                                : sortedLogs.filter(log => !log.isHpiConditionEntry);
 
                           return filteredLogs.length > 0 ? (
                             <div className={cn("space-y-4 relative before:absolute before:inset-y-0 before:left-[11px] before:w-[2px]", logViewTab === 'chronological' ? "before:bg-indigo-100" : "before:bg-slate-100")}>
