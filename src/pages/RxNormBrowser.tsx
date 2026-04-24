@@ -563,6 +563,23 @@ export function RxNormBrowser({
                           <span className="text-[9px] text-slate-400 font-medium">SNOMED · MED-RT · PharmGKB · CPIC</span>
                         </div>
 
+                        {/* ── CDSS Jump List ── */}
+                        <div className="bg-white rounded-lg border border-slate-200 p-2 sticky top-0 z-10 shadow-sm">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white bg-emerald-600 px-2 py-1 rounded mr-0.5 shrink-0">CDSS</span>
+                            {[
+                              { id: 'sec-indications',       label: 'Indications',       color: 'text-emerald-600', show: monograph.indications?.length > 0 },
+                              { id: 'sec-contraindications', label: 'Contraindications',  color: 'text-red-600',     show: monograph.contraindications?.length > 0 },
+                              { id: 'sec-medrt-ddi',         label: 'Drug Interactions',  color: 'text-amber-600',   show: monograph.medrtDDI?.length > 0 },
+                              { id: 'sec-pgx',              label: 'Pharmacogenomics',   color: 'text-teal-700',    show: monograph.pgxInteractions?.length > 0 },
+                            ].filter(s => s.show).map(s => (
+                              <button key={s.id} onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold hover:bg-emerald-50 transition-colors border border-transparent hover:border-emerald-200', s.color)}>
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         {/* ── Indications (SNOMED CT) ── */}
                         {monograph.indications?.length > 0 && (
                           <details id="sec-indications" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group" open>
