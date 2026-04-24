@@ -1338,6 +1338,44 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                 today: _today,
                               });
                               if (!_v.allowed) return alert(_v.message);
+
+                              // Rule 2B: older sibling → inject as HPI into the active condition
+                              if (_v.actionType === 'ADD_CHILD_AS_HPI') {
+                                setIsSaving(true);
+                                try {
+                                  await Promise.all(
+                                    _v.affectedIds.map(async (condId) => {
+                                      const target = conditions.find((cond) => cond.id === condId);
+                                      if (!target) return;
+                                      const hpiLog = {
+                                        date: onsetDate || new Date().toISOString().split('T')[0],
+                                        system_date: new Date().toISOString(),
+                                        action: 'HPI Entry',
+                                        note: `Historical occurrence of: ${selectedConcept?.term}`,
+                                        user: getUserIdentity(),
+                                      };
+                                      await fetchWithAuth(`/api/patients/${patientId}/conditions/${condId}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ ...target, logs: [...(target.logs || []), hpiLog] }),
+                                      });
+                                    })
+                                  );
+                                  setIsAddModalOpen(false);
+                                  setAddStep(1);
+                                  setSelectedConcept(null);
+                                  setOnsetDate('');
+                                  setDescription('');
+                                  setHierarchyConflict(null);
+                                  setDuplicateError(null);
+                                  fetchConditions();
+                                } catch (err) {
+                                  console.error(err);
+                                } finally {
+                                  setIsSaving(false);
+                                }
+                                return;
+                              }
                             }
 
                             setIsSaving(true);

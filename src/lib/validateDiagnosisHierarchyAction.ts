@@ -193,10 +193,20 @@ export function validateDiagnosisHierarchyAction(
     const latestConflictOnset = conflictOnsets.sort().reverse()[0] ?? null;
     const earliestConflictOnset = conflictOnsets.sort()[0] ?? null;
 
-    // Try to identify if there is a recorded parent with an onset date
-    // (stored as a condition whose code is NOT in conflictingCodes but exists
-    // in the patient's record as a parent in the SNOMED hierarchy)
-    // Since we don't have parent code here, we check against earliestConflictOnset.
+    // ── Find the PARENT onset from non-conflicting active conditions ──────────
+    // Non-conflicting active conditions that are NOT the target code are likely
+    // the broader parent(s) shared by both the new child and the existing sibling.
+    const nonConflicting = existingConditions.filter(
+      (c) =>
+        !hierarchyData.conflictingCodes.includes(c.snomed_code) &&
+        c.snomed_code !== targetCode &&
+        c.status === 'Active'
+    );
+    const parentOnsets = nonConflicting
+      .map((c) => c.onset)
+      .filter(Boolean) as string[];
+    // Earliest non-conflicting onset = most likely the shared parent onset
+    const parentOnset = parentOnsets.sort()[0] ?? null;
 
     if (!targetOnset) {
       // No date — let the UI's existing !onsetDate guard handle this
@@ -209,7 +219,7 @@ export function validateDiagnosisHierarchyAction(
       };
     }
 
-    // Rule 2A — new child onset is LATER than latest active child → replace
+    // Rule 2A — new child onset is LATER than the latest active sibling/child → replace
     if (latestConflictOnset && targetOnset > latestConflictOnset) {
       return {
         allowed: true,
@@ -223,30 +233,30 @@ export function validateDiagnosisHierarchyAction(
       };
     }
 
-    // Rule 2C — new child onset is EARLIER than the earliest recorded onset of the parent group
-    // We surface this as: new child is earlier than the earliest conflict onset
-    // AND the user-selected onset is strictly earlier than earliestConflictOnset
-    if (earliestConflictOnset && targetOnset < earliestConflictOnset) {
-      // Would this go before any parent? Block it.
-      return {
-        allowed: false,
-        actionType: 'BLOCK',
-        message:
-          'Cannot add a child condition earlier than the recorded parent diagnosis date. Please verify the parent date and modify it earlier if clinically correct, or enter the correct child onset date.',
-        affectedIds: activeConflicts.map((c) => c.id),
-        auditEvent: {
-          type: 'BLOCKED_CHRONOLOGICAL_CHILD',
-          detail: `Child onset ${targetOnset} is before earliest recorded onset ${earliestConflictOnset}`,
-        },
-      };
-    }
+    // new child onset is earlier than the active sibling — check parent date
+    if (latestConflictOnset && targetOnset < latestConflictOnset) {
 
-    // Rule 2B — new child onset is BETWEEN parent onset and latest child → inject as HPI
-    if (latestConflictOnset && targetOnset <= latestConflictOnset) {
+      // Rule 2C — new child onset is EARLIER than the parent onset (if parent exists) → BLOCK
+      if (parentOnset && targetOnset < parentOnset) {
+        return {
+          allowed: false,
+          actionType: 'BLOCK',
+          message:
+            'Cannot add a child condition earlier than the recorded parent diagnosis date. Please verify the parent date and modify it to an earlier date if clinically correct, or enter the correct child onset date.',
+          affectedIds: activeConflicts.map((c) => c.id),
+          auditEvent: {
+            type: 'BLOCKED_CHRONOLOGICAL_CHILD',
+            detail: `Child onset ${targetOnset} is before parent onset ${parentOnset}`,
+          },
+        };
+      }
+
+      // Rule 2B — new child onset is BETWEEN parent onset and active sibling onset → inject as HPI
+      // (Also applies when no parent is recorded — we don't block without a reference)
       return {
         allowed: true,
         actionType: 'ADD_CHILD_AS_HPI',
-        message: `This condition predates the current active diagnosis. It will be injected as a Historical Present Illness (HPI) note. The active diagnosis remains unchanged.`,
+        message: `This condition predates the current active diagnosis. It will be injected as a Historical Present Illness (HPI) note into the active condition's timeline. The active diagnosis remains unchanged.`,
         affectedIds: activeConflicts.map((c) => c.id),
         auditEvent: {
           type: 'HPI_INJECTION_CHILD',
