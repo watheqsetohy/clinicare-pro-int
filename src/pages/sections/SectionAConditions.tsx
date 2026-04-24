@@ -356,14 +356,19 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
 
   const availableTags = Array.from(new Set(conditions.map(c => c.semantic_tag).filter(Boolean)));
 
-  const handleDelete = (conditionId: string) => {
-    if (window.confirm("Are you sure you want to completely remove this condition from the patient's record? This cannot be undone.")) {
-      fetchWithAuth(`/api/patients/${patientId}/conditions/${conditionId}`, {
-        method: 'DELETE'
-      })
-      .then(res => res.json())
-      .then(() => fetchConditions())
-      .catch(err => console.error(err));
+  const handleDelete = async (conditionId: string) => {
+    if (!window.confirm("Are you sure you want to completely remove this condition from the patient's record? This cannot be undone.")) return;
+    try {
+      const res = await fetchWithAuth(`/api/patients/${patientId}/conditions/${conditionId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Delete failed: ${err.error || res.statusText}`);
+        return;
+      }
+      fetchConditions();
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete condition. Check console for details.');
     }
   };
 
@@ -862,7 +867,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                           });
                           
                           const filteredLogs = logViewTab === 'chronological' 
-                                ? sortedLogs.filter(log => log.action !== 'Deactivated' && log.action !== 'Reactivated' && log.action !== 'Added as Inactive')
+                                ? sortedLogs.filter(log => log.action !== 'Added as Inactive')
                                 : sortedLogs;
 
                           return filteredLogs.length > 0 ? (
