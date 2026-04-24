@@ -658,11 +658,11 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                       </span>
                       
                       {isAdmin && (
-                        <div className="flex bg-slate-100 rounded-md p-0.5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-4 shadow-sm border border-slate-200">
-                          <button onClick={(e) => { e.stopPropagation(); openEditModal(condition); }} className="p-1 hover:bg-white rounded text-slate-500 hover:text-blue-600 transition-colors">
+                        <div className="flex bg-white/80 rounded-md p-0.5 absolute right-3 top-3 z-20 shadow-sm border border-slate-200/60 opacity-40 hover:opacity-100 transition-opacity">
+                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); openEditModal(condition); }} className="p-1.5 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(condition.id); }} className="p-1 hover:bg-white rounded text-slate-500 hover:text-red-600 transition-colors">
+                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(condition.id); }} className="p-1.5 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors" title="Delete">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
