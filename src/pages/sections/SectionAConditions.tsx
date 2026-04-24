@@ -43,13 +43,20 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
         {logViewTab === 'chronological' ? (
            <div className={cn("w-2 h-2 rounded-full scale-125", 
               log.severity === 'Severe' ? "bg-red-500" :
-              log.isOnset ? "bg-slate-600" :
-              log.action === 'HPI Entry' ? "bg-orange-500" :
-              log.action?.includes('Active') ? "bg-blue-500" :
+              log.severity === 'Moderate' ? "bg-orange-500" :
+              log.severity === 'Mild' ? "bg-blue-500" :
               "bg-slate-400"
            )} />
         ) : (
-           <div className={cn("w-2 h-2 rounded-full", log.isOnset ? "bg-indigo-600 scale-125" : log.action?.includes('Active') ? "bg-emerald-500" : log.action?.includes('Deactivate') ? "bg-amber-500" : "bg-blue-500")} />
+           <div className={cn("w-2 h-2 rounded-full",
+              log.isOnset ? "bg-indigo-600 scale-125" :
+              log.action?.includes('Activated') ? "bg-emerald-500" :
+              log.action === 'HPI Entry' ? "bg-violet-500" :
+              log.action?.includes('Deactivat') ? "bg-amber-500" :
+              log.action?.includes('Reactivat') ? "bg-cyan-500" :
+              log.action?.includes('Superseded') ? "bg-rose-400" :
+              "bg-blue-500"
+           )} />
         )}
       </div>
       <div className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1.5">
@@ -209,11 +216,16 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
           <div className={cn("text-[11px] uppercase mt-0.5 font-bold", 
              logViewTab === 'chronological' ? (
                 log.severity === 'Severe' ? "text-red-600" :
-                log.isOnset ? "text-slate-500" :
-                log.action === 'HPI Entry' ? "text-orange-600" :
-                log.action?.includes('Active') ? "text-blue-600" :
+                log.severity === 'Moderate' ? "text-orange-600" :
+                log.severity === 'Mild' ? "text-blue-600" :
                 "text-slate-400"
              ) : (
+                log.isOnset ? "text-indigo-600" :
+                log.action?.includes('Activated') ? "text-emerald-600" :
+                log.action === 'HPI Entry' ? "text-violet-600" :
+                log.action?.includes('Deactivat') ? "text-amber-600" :
+                log.action?.includes('Reactivat') ? "text-cyan-600" :
+                log.action?.includes('Superseded') ? "text-rose-500" :
                 log.condition_code === flyoutCondition?.snomed_code ? "text-blue-600" : "text-slate-400"
              )
           )}>
@@ -222,11 +234,18 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
           <div className={cn("text-[13px] font-semibold leading-tight mt-0.5",
             logViewTab === 'chronological' ? (
               log.severity === 'Severe' ? "text-red-700" :
-              log.isOnset ? "text-slate-600" :
-              log.action === 'HPI Entry' ? "text-orange-700" :
-              log.action?.includes('Active') ? "text-blue-700" :
+              log.severity === 'Moderate' ? "text-orange-700" :
+              log.severity === 'Mild' ? "text-blue-700" :
+              "text-slate-600"
+            ) : (
+              log.isOnset ? "text-indigo-700" :
+              log.action?.includes('Activated') ? "text-emerald-700" :
+              log.action === 'HPI Entry' ? "text-violet-700" :
+              log.action?.includes('Deactivat') ? "text-amber-700" :
+              log.action?.includes('Reactivat') ? "text-cyan-700" :
+              log.action?.includes('Superseded') ? "text-rose-600" :
               "text-slate-800"
-            ) : "text-slate-800"
+            )
           )}>
             {logViewTab === 'chronological' ? (
               log.isOnset ? 'Disease Origin' :
