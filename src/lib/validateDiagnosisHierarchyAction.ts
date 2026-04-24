@@ -185,16 +185,16 @@ export function validateDiagnosisHierarchyAction(
         c.status === 'Active'
     );
 
-    // Find the parent condition among the conflicting records (if any is a parent)
-    // and the latest active child onset for replacement comparison
+    // Fix: use spread copies to avoid array mutation from .sort().reverse()
     const conflictOnsets = activeConflicts
       .map((c) => c.onset)
       .filter(Boolean) as string[];
-    const latestConflictOnset = conflictOnsets.sort().reverse()[0] ?? null;
-    const earliestConflictOnset = conflictOnsets.sort()[0] ?? null;
+    const sortedOnsets = [...conflictOnsets].sort(); // ascending
+    const latestConflictOnset = sortedOnsets[sortedOnsets.length - 1] ?? null;  // newest
+    const earliestConflictOnset = sortedOnsets[0] ?? null;                       // oldest
 
     // ── Find the PARENT onset from non-conflicting active conditions ──────────
-    // Non-conflicting active conditions that are NOT the target code are likely
+    // Non-conflicting active conditions that are NOT the target code are
     // the broader parent(s) shared by both the new child and the existing sibling.
     const nonConflicting = existingConditions.filter(
       (c) =>
@@ -202,14 +202,15 @@ export function validateDiagnosisHierarchyAction(
         c.snomed_code !== targetCode &&
         c.status === 'Active'
     );
-    const parentOnsets = nonConflicting
-      .map((c) => c.onset)
-      .filter(Boolean) as string[];
-    // Earliest non-conflicting onset = most likely the shared parent onset
-    const parentOnset = parentOnsets.sort()[0] ?? null;
+    const parentOnsets = nonConflicting.map((c) => c.onset).filter(Boolean) as string[];
+    const parentOnset = [...parentOnsets].sort()[0] ?? null; // earliest non-conflicting onset
+
+    // ── Detect whether the conflicting condition IS a parent (not a sibling) ──
+    // When conflict type is 'child', the conflicting condition is BROADER (a parent).
+    // When conflict type is 'sibling', the conflicting condition is at the same level.
+    const conflictIsParent = hierarchyData.conflict === 'child';
 
     if (!targetOnset) {
-      // No date — let the UI's existing !onsetDate guard handle this
       return {
         allowed: true,
         actionType: 'ADD_ACTIVE',
@@ -219,7 +220,47 @@ export function validateDiagnosisHierarchyAction(
       };
     }
 
-    // Rule 2A — new child onset is LATER than the latest active sibling/child → replace
+    // ══════════════════════════════════════════════════════════════════════════
+    // CASE 2: Current condition IS the Parent (conflict type = 'child')
+    // Adding a new child under an existing active parent
+    // ══════════════════════════════════════════════════════════════════════════
+    if (conflictIsParent) {
+      const activeParentOnset = earliestConflictOnset; // the parent's onset date
+
+      // Rule 2e — new child onset < parent onset → BLOCK
+      if (activeParentOnset && targetOnset < activeParentOnset) {
+        return {
+          allowed: false,
+          actionType: 'BLOCK',
+          message:
+            'Cannot add a child condition earlier than the recorded parent diagnosis date. Please verify the parent date and modify it to an earlier date if clinically correct, or enter the correct child onset date.',
+          affectedIds: activeConflicts.map((c) => c.id),
+          auditEvent: {
+            type: 'BLOCKED_CHRONOLOGICAL_CHILD',
+            detail: `Child onset ${targetOnset} is before parent onset ${activeParentOnset}`,
+          },
+        };
+      }
+
+      // Rule 2d — new child onset ≥ parent onset → add as new specific condition
+      return {
+        allowed: true,
+        actionType: 'ADD_ACTIVE',
+        message: '',
+        affectedIds: [],
+        auditEvent: {
+          type: 'CONDITION_ADDED',
+          detail: `Added specific condition ${targetCode} (${targetTerm}) under parent on ${targetOnset}`,
+        },
+      };
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CASE 1: Current condition IS an active Child (conflict type = 'sibling')
+    // Adding a new sibling child — compare against the existing active child and parent
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Rule 2A — new child onset is LATER than the latest active sibling → replace
     if (latestConflictOnset && targetOnset > latestConflictOnset) {
       return {
         allowed: true,
@@ -236,7 +277,7 @@ export function validateDiagnosisHierarchyAction(
     // new child onset is earlier than the active sibling — check parent date
     if (latestConflictOnset && targetOnset < latestConflictOnset) {
 
-      // Rule 2C — new child onset is EARLIER than the parent onset (if parent exists) → BLOCK
+      // Rule 2C — new child onset is EARLIER than the parent onset → BLOCK
       if (parentOnset && targetOnset < parentOnset) {
         return {
           allowed: false,
@@ -251,8 +292,8 @@ export function validateDiagnosisHierarchyAction(
         };
       }
 
-      // Rule 2B — new child onset is BETWEEN parent onset and active sibling onset → inject as HPI
-      // (Also applies when no parent is recorded — we don't block without a reference)
+      // Rule 2B — new child is between parent onset and active sibling → inject as HPI
+      // (Also applies when no parent is recorded — no reference date to block on)
       return {
         allowed: true,
         actionType: 'ADD_CHILD_AS_HPI',
@@ -265,6 +306,7 @@ export function validateDiagnosisHierarchyAction(
       };
     }
   }
+
 
   // ── No conflict — standard add ────────────────────────────────────────────
   return {
