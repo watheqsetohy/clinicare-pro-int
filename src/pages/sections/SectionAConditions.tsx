@@ -42,9 +42,9 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
       <div className={cn("absolute left-0 top-1 w-[24px] h-[24px] border-[3px] border-white rounded-full z-10 flex items-center justify-center", logViewTab === 'chronological' ? "bg-indigo-50" : "bg-slate-100")}>
         {logViewTab === 'chronological' ? (
            <div className={cn("w-2 h-2 rounded-full scale-125", 
-              log.severity === "Severe" ? "bg-red-500" :
-              log.severity === "Moderate" ? "bg-orange-500" :
-              log.severity === "Mild" ? "bg-blue-500" :
+              log.isOnset ? "bg-slate-600" :
+              log.action === 'HPI Entry' ? "bg-orange-500" :
+              log.action?.includes('Active') ? "bg-blue-500" :
               "bg-slate-400"
            )} />
         ) : (
@@ -205,18 +205,33 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
       )}
       {log.condition_term ? (
         <div className="flex flex-col">
-          <div className={cn("text-[11px] uppercase mt-0.5", 
-             log.condition_code === flyoutCondition?.snomed_code ? "text-blue-600 font-bold" : 
-             (logViewTab === 'chronological' ? (
-                log.severity === "Severe" ? "text-red-700 font-bold" :
-                log.severity === "Moderate" ? "text-orange-700 font-bold" :
-                log.severity === "Mild" ? "text-blue-700 font-bold" :
-                "font-bold text-slate-400"
-             ) : "font-bold text-slate-400")
+          <div className={cn("text-[11px] uppercase mt-0.5 font-bold", 
+             logViewTab === 'chronological' ? (
+                log.isOnset ? "text-slate-500" :
+                log.action === 'HPI Entry' ? "text-orange-600" :
+                log.action?.includes('Active') ? "text-blue-600" :
+                "text-slate-400"
+             ) : (
+                log.condition_code === flyoutCondition?.snomed_code ? "text-blue-600" : "text-slate-400"
+             )
           )}>
             {log.condition_term}
           </div>
-          <div className="text-[13px] font-semibold text-slate-800 leading-tight mt-0.5">{log.action}</div>
+          <div className={cn("text-[13px] font-semibold leading-tight mt-0.5",
+            logViewTab === 'chronological' ? (
+              log.isOnset ? "text-slate-600" :
+              log.action === 'HPI Entry' ? "text-orange-700" :
+              log.action?.includes('Active') ? "text-blue-700" :
+              "text-slate-800"
+            ) : "text-slate-800"
+          )}>
+            {logViewTab === 'chronological' ? (
+              log.isOnset ? 'Disease Origin' :
+              log.action === 'HPI Entry' ? 'Injected as HPI' :
+              log.action?.includes('Active') ? 'Current Active' :
+              log.action
+            ) : log.action}
+          </div>
           {(logViewTab === 'chronological') && (
              <div className="flex items-center gap-2 mt-2 opacity-90">
                {log.acuity && log.acuity !== "Unknown" && (
