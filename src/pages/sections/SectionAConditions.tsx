@@ -265,6 +265,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
   const [severityLocked, setSeverityLocked] = useState(false);
   const [acuityLocked, setAcuityLocked] = useState(false);
   const [flyoutCondition, setFlyoutCondition] = useState<any | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedConditionId, setExpandedConditionId] = useState<string | null>(null);
   const [expandedConditionLogs, setExpandedConditionLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -357,7 +358,6 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
   const availableTags = Array.from(new Set(conditions.map(c => c.semantic_tag).filter(Boolean)));
 
   const handleDelete = async (conditionId: string) => {
-    if (!window.confirm("Are you sure you want to completely remove this condition from the patient's record? This cannot be undone.")) return;
     try {
       const res = await fetchWithAuth(`/api/patients/${patientId}/conditions/${conditionId}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -365,10 +365,11 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
         alert(`Delete failed: ${err.error || res.statusText}`);
         return;
       }
+      setConfirmDeleteId(null);
       fetchConditions();
     } catch (err) {
       console.error('Delete error:', err);
-      alert('Failed to delete condition. Check console for details.');
+      alert('Failed to delete condition.');
     }
   };
 
@@ -658,13 +659,27 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                       </span>
                       
                       {isAdmin && (
-                        <div className="flex bg-white/80 rounded-md p-0.5 absolute right-3 top-3 z-20 shadow-sm border border-slate-200/60 opacity-40 hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); openEditModal(condition); }} className="p-1.5 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(condition.id); }} className="p-1.5 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors" title="Delete">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="absolute right-3 top-3 z-20">
+                          {confirmDeleteId === condition.id ? (
+                            <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2 py-1 shadow-md animate-in fade-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] font-bold text-red-700 mr-1">Delete?</span>
+                              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(condition.id); }} className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded transition-colors">
+                                Yes
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmDeleteId(null); }} className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 text-[10px] font-bold rounded border border-slate-200 transition-colors">
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex bg-white/80 rounded-md p-0.5 shadow-sm border border-slate-200/60 opacity-40 hover:opacity-100 transition-opacity">
+                              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); openEditModal(condition); }} className="p-1.5 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmDeleteId(condition.id); }} className="p-1.5 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
