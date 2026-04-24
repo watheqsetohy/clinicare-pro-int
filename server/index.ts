@@ -586,6 +586,7 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
     
     mergedLogs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
+    console.log('[Cluster Logs] Rows:', rows.length, 'Total logs:', mergedLogs.length, 'HPI entries:', mergedLogs.filter((l: any) => l.isHpiConditionEntry).length, 'Raw logs:', mergedLogs.filter((l: any) => !l.isHpiConditionEntry).length);
     res.json(mergedLogs);
   } catch (err) {
     console.error('[Cluster Logs API]', err); 
