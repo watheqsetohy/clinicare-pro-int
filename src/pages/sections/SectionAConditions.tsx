@@ -1618,6 +1618,31 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                    if (data.conflict !== 'none') {
                                       setIsSaving(false);
                                       const conflictingConds = conditions.filter(c => data.conflictingCodes && data.conflictingCodes.includes(c.snomed_code) && c.status === "Active");
+
+                                      // Chronological validation — enforce date rules before allowing reactivation
+                                      const todayForActivate = new Date().toISOString().split('T')[0];
+                                      const activateValidation = validateDiagnosisHierarchyAction({
+                                        targetCode: selectedConcept?.conceptId ?? '',
+                                        targetTerm: selectedConcept?.term ?? '',
+                                        targetOnset: onsetDate || null,
+                                        targetStatus: 'Active',
+                                        existingConditions: conditions.map((cond) => ({
+                                          id: cond.id,
+                                          snomed_code: cond.snomed_code,
+                                          term: cond.term,
+                                          onset: cond.onset ? cond.onset.split('T')[0] : null,
+                                          status: cond.status,
+                                        })),
+                                        hierarchyData: { conflict: data.conflict, conflictingCodes: data.conflictingCodes || [] },
+                                        today: todayForActivate,
+                                      });
+
+                                      if (!activateValidation.allowed) {
+                                        // Chronological violation — block reactivation with clear message
+                                        return alert(`Cannot activate this condition:\n${activateValidation.message}`);
+                                      }
+
+                                      // Show conflict UI (HPI / Replace buttons) for valid chronological cases
                                       setHierarchyConflict({
                                         type: data.conflict,
                                         conflictingCodes: data.conflictingCodes,

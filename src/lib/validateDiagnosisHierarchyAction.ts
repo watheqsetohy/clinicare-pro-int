@@ -185,30 +185,13 @@ export function validateDiagnosisHierarchyAction(
         c.status === 'Active'
     );
 
-    // Fix: use spread copies to avoid array mutation from .sort().reverse()
+    // Use spread copies to avoid JS array-mutation bug with .sort().reverse()
     const conflictOnsets = activeConflicts
       .map((c) => c.onset)
       .filter(Boolean) as string[];
-    const sortedOnsets = [...conflictOnsets].sort(); // ascending
-    const latestConflictOnset = sortedOnsets[sortedOnsets.length - 1] ?? null;  // newest
-    const earliestConflictOnset = sortedOnsets[0] ?? null;                       // oldest
-
-    // ── Find the PARENT onset from non-conflicting active conditions ──────────
-    // Non-conflicting active conditions that are NOT the target code are
-    // the broader parent(s) shared by both the new child and the existing sibling.
-    const nonConflicting = existingConditions.filter(
-      (c) =>
-        !hierarchyData.conflictingCodes.includes(c.snomed_code) &&
-        c.snomed_code !== targetCode &&
-        c.status === 'Active'
-    );
-    const parentOnsets = nonConflicting.map((c) => c.onset).filter(Boolean) as string[];
-    const parentOnset = [...parentOnsets].sort()[0] ?? null; // earliest non-conflicting onset
-
-    // ── Detect whether the conflicting condition IS a parent (not a sibling) ──
-    // When conflict type is 'child', the conflicting condition is BROADER (a parent).
-    // When conflict type is 'sibling', the conflicting condition is at the same level.
-    const conflictIsParent = hierarchyData.conflict === 'child';
+    const sortedOnsets = [...conflictOnsets].sort(); // ascending ISO dates
+    const latestConflictOnset  = sortedOnsets[sortedOnsets.length - 1] ?? null; // newest
+    const earliestConflictOnset = sortedOnsets[0] ?? null;                       // oldest (= parent onset when conflictIsParent)
 
     if (!targetOnset) {
       return {
@@ -220,12 +203,18 @@ export function validateDiagnosisHierarchyAction(
       };
     }
 
+    // ── Detect if the conflicting condition IS the parent (broader concept) ────
+    // conflict === 'child'  means: target is MORE SPECIFIC than existing → existing is the PARENT
+    // conflict === 'sibling' means: target is at the same level → existing is a SIBLING
+    const conflictIsParent = hierarchyData.conflict === 'child';
+
     // ══════════════════════════════════════════════════════════════════════════
-    // CASE 2: Current condition IS the Parent (conflict type = 'child')
-    // Adding a new child under an existing active parent
+    // CASE 2: Current condition IS the Parent (conflict.type === 'child')
+    // Adding a new CHILD under an existing active parent
     // ══════════════════════════════════════════════════════════════════════════
     if (conflictIsParent) {
-      const activeParentOnset = earliestConflictOnset; // the parent's onset date
+      // The conflicting condition IS the parent — use its onset as the reference
+      const activeParentOnset = earliestConflictOnset;
 
       // Rule 2e — new child onset < parent onset → BLOCK
       if (activeParentOnset && targetOnset < activeParentOnset) {
@@ -242,7 +231,7 @@ export function validateDiagnosisHierarchyAction(
         };
       }
 
-      // Rule 2d — new child onset ≥ parent onset → add as new specific condition
+      // Rule 2d — new child onset ≥ parent onset → add as new specific condition (no deactivation)
       return {
         allowed: true,
         actionType: 'ADD_ACTIVE',
@@ -256,11 +245,14 @@ export function validateDiagnosisHierarchyAction(
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // CASE 1: Current condition IS an active Child (conflict type = 'sibling')
-    // Adding a new sibling child — compare against the existing active child and parent
+    // CASE 1: Current condition IS an active Child (conflict.type === 'sibling')
+    // Adding a NEW sibling — compare only against the existing active sibling.
+    // NOTE: We do NOT try to infer the parent from other conditions because
+    // unrelated active conditions (e.g. Diabetes) would produce false blocks.
+    // The only chronological check here is new sibling vs existing active sibling.
     // ══════════════════════════════════════════════════════════════════════════
 
-    // Rule 2A — new child onset is LATER than the latest active sibling → replace
+    // Rule 2A — new sibling onset is LATER than the active sibling → replace
     if (latestConflictOnset && targetOnset > latestConflictOnset) {
       return {
         allowed: true,
@@ -274,26 +266,10 @@ export function validateDiagnosisHierarchyAction(
       };
     }
 
-    // new child onset is earlier than the active sibling — check parent date
+    // Rule 2B — new sibling onset is EARLIER than the active sibling → inject as HPI
+    // (Parent-date check for Rule 2C is handled at the UI layer where the parent
+    //  condition can be identified by SNOMED hierarchy, not guessed here)
     if (latestConflictOnset && targetOnset < latestConflictOnset) {
-
-      // Rule 2C — new child onset is EARLIER than the parent onset → BLOCK
-      if (parentOnset && targetOnset < parentOnset) {
-        return {
-          allowed: false,
-          actionType: 'BLOCK',
-          message:
-            'Cannot add a child condition earlier than the recorded parent diagnosis date. Please verify the parent date and modify it to an earlier date if clinically correct, or enter the correct child onset date.',
-          affectedIds: activeConflicts.map((c) => c.id),
-          auditEvent: {
-            type: 'BLOCKED_CHRONOLOGICAL_CHILD',
-            detail: `Child onset ${targetOnset} is before parent onset ${parentOnset}`,
-          },
-        };
-      }
-
-      // Rule 2B — new child is between parent onset and active sibling → inject as HPI
-      // (Also applies when no parent is recorded — no reference date to block on)
       return {
         allowed: true,
         actionType: 'ADD_CHILD_AS_HPI',
@@ -306,8 +282,6 @@ export function validateDiagnosisHierarchyAction(
       };
     }
   }
-
-
   // ── No conflict — standard add ────────────────────────────────────────────
   return {
     allowed: true,
