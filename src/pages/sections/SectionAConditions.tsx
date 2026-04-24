@@ -1254,7 +1254,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                               setIsSaving(true);
                               try {
                                 let finalLogs = [{
-                                    date: new Date().toISOString(),
+                                    date: onsetDate || new Date().toISOString().split('T')[0],
                                     system_date: new Date().toISOString(),
                                     action: status === 'Active' ? 'Added & Activated' : 'Added as Inactive',
                                     note: description || 'Initial condition entry',
@@ -1315,6 +1315,31 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                             if (!onsetDate) return alert("Onset date is required");
                             // Rule B.2: future date guard
                             if (onsetDate > new Date().toISOString().split("T")[0]) return alert("Onset date cannot be later than today. Please select today or a past date.");
+
+                            // Rule C: chronological validation — block if new child onset is before parent onset
+                            {
+                              const _today = new Date().toISOString().split("T")[0];
+                              const _v = validateDiagnosisHierarchyAction({
+                                targetCode: selectedConcept?.conceptId ?? '',
+                                targetTerm: selectedConcept?.term ?? '',
+                                targetOnset: onsetDate,
+                                targetStatus: status as 'Active' | 'Inactive',
+                                existingConditions: conditions.map((cond) => ({
+                                  id: cond.id,
+                                  snomed_code: cond.snomed_code,
+                                  term: cond.term,
+                                  onset: cond.onset ? cond.onset.split('T')[0] : null,
+                                  status: cond.status,
+                                })),
+                                hierarchyData: {
+                                  conflict: hierarchyConflict.type as any,
+                                  conflictingCodes: hierarchyConflict.conflictingCodes,
+                                },
+                                today: _today,
+                              });
+                              if (!_v.allowed) return alert(_v.message);
+                            }
+
                             setIsSaving(true);
                             
                             try {
@@ -1346,7 +1371,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                               };
                               if (!editConditionId) {
                                  payload.logs = [{
-                                   date: new Date().toISOString(),
+                                   date: onsetDate || new Date().toISOString().split('T')[0],
                                    system_date: new Date().toISOString(),
                                    action: status === 'Active' ? 'Added & Activated' : 'Added as Inactive',
                                    note: `Clinically escalated/linked from previous diagnosis. ${description || ''}`.trim(),
@@ -1512,7 +1537,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                            } else if (!editConditionId) {
                              // Initialize logs for creating a brand new condition with real user
                              payload.logs = [{
-                               date: new Date().toISOString(),
+                               date: onsetDate || new Date().toISOString().split('T')[0],
                                system_date: new Date().toISOString(),
                                action: status === 'Active' ? 'Added & Activated' : 'Added as Inactive',
                                note: description || 'Initial condition entry',

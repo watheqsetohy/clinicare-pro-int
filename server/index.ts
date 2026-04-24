@@ -594,9 +594,10 @@ app.post('/api/patients/:id/conditions', requireAuth, auditLog('ADD_CONDITION'),
     const bodySystem = await extractBodySystem(snomed_code);
     const id = crypto.randomUUID();
     
-    // Fallback if logs array is missing
+    // Fallback if logs array is missing — use onset date as clinical date for HPI
     const initialLogs = logs || [{
-      date: new Date().toISOString(),
+      date: onset ? (typeof onset === 'string' ? onset.split('T')[0] : onset) : new Date().toISOString().split('T')[0],
+      system_date: new Date().toISOString(),
       action: status === 'Active' ? 'Added & Activated' : 'Added as Inactive',
       note: notes || 'Initial condition entry',
       user: 'Clinician'
