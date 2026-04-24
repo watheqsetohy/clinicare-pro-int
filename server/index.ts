@@ -581,6 +581,16 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
 app.post('/api/patients/:id/conditions', requireAuth, auditLog('ADD_CONDITION'), async (req, res) => {
   try {
     const { term, snomed_code, onset, severity, status, source, acuity, notes, logs, session_id } = req.body;
+
+    // Rule B.2 — authoritative future-date guard (runs before any DB operation)
+    if (onset) {
+      const today = new Date().toISOString().split('T')[0];
+      const onsetDate = typeof onset === 'string' ? onset.split('T')[0] : '';
+      if (onsetDate > today) {
+        return res.status(400).json({ error: 'Onset date cannot be later than today. Please select today or a past date.' });
+      }
+    }
+
     const bodySystem = await extractBodySystem(snomed_code);
     const id = crypto.randomUUID();
     
@@ -598,6 +608,7 @@ app.post('/api/patients/:id/conditions', requireAuth, auditLog('ADD_CONDITION'),
     );
     res.status(201).json({ success: true, id });
   } catch (error) { console.error('[API Error]', error); res.status(500).json({ error: 'An internal error occurred. Please try again.' }); }
+
 });
 
 app.put('/api/patients/:patientId/conditions/:conditionId', requireAuth, auditLog('UPDATE_CONDITION'), async (req, res) => {

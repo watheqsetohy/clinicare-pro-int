@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { fetchWithAuth } from '../../lib/authSession';
 import { Plus, Search, CheckCircle2, XCircle, Clock, AlertTriangle, ArrowLeft, Trash2, Edit2, ChevronDown, ChevronRight, FileText, Activity, Server, User, MapPin, Shield, Briefcase, MessageSquare, Phone, Mail } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { SnomedBrowser } from "../SnomedBrowser";
 import { getAuthSession } from '../../lib/authSession';
+import { validateDiagnosisHierarchyAction } from '../../lib/validateDiagnosisHierarchyAction';
 
 const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) => {
   const [showMetadata, setShowMetadata] = useState(false);
@@ -251,14 +252,11 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
   const [conditions, setConditions] = useState<any[]>([]);
   const isAdmin = true; // Hardcoded to true for testing, will connect to auth context later
 
-  // Today's date constant — used for default onset and future-date blocking
-  const today = new Date().toISOString().split("T")[0];
-
   // Add Workflow States
   const [addStep, setAddStep] = useState<1 | 2>(1);
   const [selectedConcept, setSelectedConcept] = useState<{ conceptId: string, term: string, fsn: string } | null>(null);
   const [editConditionId, setEditConditionId] = useState<string | null>(null);
-  const [onsetDate, setOnsetDate] = useState(today); // Rule 2: defaults to today
+  const [onsetDate, setOnsetDate] = useState("");
   const [severity, setSeverity] = useState("Moderate");
   const [status, setStatus] = useState("Active");
   const [source, setSource] = useState("SNOMED CT Browser");
@@ -283,7 +281,6 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
   const [tagFilter, setTagFilter] = useState("All");
   const [groupBy, setGroupBy] = useState<"None" | "Severity" | "Source" | "System" | "Tag">("None");
   const [viewLayout, setViewLayout] = useState<"List" | "Kanban">("List");
-  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('desc'); // Kanban date sort
   const [logViewTab, setLogViewTab] = useState<'chronological' | 'audit'>('chronological');
   
   const getUserIdentity = () => {
@@ -450,43 +447,6 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
     });
   };
 
-  // Rule 3 — HPI Injection: inject broader parent as a historical log entry into the active child
-  const handleHPIInjection = async () => {
-    if (!hierarchyConflict || !onsetDate) return;
-    setIsSaving(true);
-    try {
-      // For each conflicting active child, prepend an HPI log entry with the selected (earlier) date
-      for (const child of hierarchyConflict.conflictingConditions) {
-        const hpiLog = {
-          date: new Date(onsetDate).toISOString(),
-          system_date: new Date().toISOString(),
-          action: 'Historical Origin (HPI)',
-          note: `Broader condition "${selectedConcept?.term}" documented as clinical predecessor (onset: ${onsetDate}).`,
-          user: getUserIdentity()
-        };
-        const updatedLogs = [hpiLog, ...(child.logs || [])];
-        await fetchWithAuth(`/api/patients/${patientId}/conditions/${child.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...child, logs: updatedLogs })
-        });
-      }
-      // Close modal and refresh
-      setIsAddModalOpen(false);
-      setAddStep(1);
-      setEditConditionId(null);
-      setOnsetDate(today);
-      setDescription("");
-      setHierarchyConflict(null);
-      setDuplicateError(null);
-      fetchConditions();
-    } catch (err) {
-      console.error('HPI injection error:', err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -577,18 +537,6 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                </button>
              </div>
            )}
-           {viewLayout === "Kanban" && (
-             <div className="flex items-center bg-slate-100 rounded-lg p-1" title="Sort cards by onset date">
-               <button
-                 onClick={() => setDateSort('desc')}
-                 className={cn("px-2.5 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1", dateSort === 'desc' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-               >↓ Newest</button>
-               <button
-                 onClick={() => setDateSort('asc')}
-                 className={cn("px-2.5 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1", dateSort === 'asc' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-               >↑ Oldest</button>
-             </div>
-           )}
            <div className="flex items-center gap-2">
              {groupBy !== "None" && viewLayout === "List" && (
                 <button 
@@ -663,12 +611,12 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
               <div className={cn(
                  viewLayout === "Kanban" && groupBy !== "None" ? "space-y-3" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
               )}>
-                {[...groupConds].sort((a, b) => {
-                  if (viewLayout !== 'Kanban') return 0;
-                  const aTime = a.onset ? new Date(a.onset).getTime() : 0;
-                  const bTime = b.onset ? new Date(b.onset).getTime() : 0;
-                  return dateSort === 'asc' ? aTime - bTime : bTime - aTime;
-                }).map((condition) => (
+                {/* Rule E: Kanban sorted by onset date newest-first */}
+                {(viewLayout === "Kanban" ? [...groupConds].sort((a, b) => {
+                   if (!a.onset) return 1;
+                   if (!b.onset) return -1;
+                   return new Date(b.onset).getTime() - new Date(a.onset).getTime();
+                }) : groupConds).map((condition) => (
                 <div 
                   key={condition.id} 
                   onClick={() => {
@@ -1096,7 +1044,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                  setSeverity(targetSev);
                                  setSeverityLocked(lockedSv);
                                  setSelectedConcept(concept);
-                                 setOnsetDate(today); // Rule 2: reset to today
+                                 // Rule B.1: default onset date = today for new conditions only
+                                 setOnsetDate(new Date().toISOString().split("T")[0]);
                                  setStatus("Active");
                              }
 
@@ -1169,17 +1118,16 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                               <p className="text-[13px] text-amber-700/90 leading-relaxed mb-3">
                                  A related condition (<strong>{hierarchyConflict.conflictingTerms}</strong>) sharing the same category is already active. You can choose to replace it to maintain a precise list, or keep both if clinically appropriate.
                               </p>
-                           ) : hierarchyConflict.type === 'parent' && onsetDate && hierarchyConflict.conflictingConditions.every((c: any) => c.onset && new Date(onsetDate) < new Date(c.onset)) ? (
-                               <p className="text-[13px] text-blue-700/90 leading-relaxed mb-3">
-                                  The selected date (<strong>{onsetDate}</strong>) predates the active specific condition (<strong>{hierarchyConflict.conflictingTerms}</strong>).<br />
-                                  <span className="block mt-2 font-semibold text-blue-800">✓ This will be injected as a Historical Origin (HPI) entry into the active condition's timeline — no duplicate condition will be created.</span>
-                               </p>
-                            ) : hierarchyConflict.type === 'parent' ? (
-                               <p className="text-[13px] text-red-700/90 leading-relaxed mb-3">
-                                  A more specific condition (<strong>{hierarchyConflict.conflictingTerms}</strong>) already exists with an onset of <strong>{hierarchyConflict.conflictingConditions[0]?.onset?.split('T')[0]}</strong>.
-                                  <span className="block mt-2 font-bold text-red-700">✗ A broader (parent) condition must be recorded with an earlier date than all its active specific conditions. Change the onset date to before {hierarchyConflict.conflictingConditions.map((c:any) => c.onset?.split('T')[0]).join(', ')} to proceed.</span>
-                               </p>
-                            ) : null}
+                           ) : hierarchyConflict.type === 'parent' && status === 'Inactive' ? (
+                              <p className="text-[13px] text-blue-700/90 leading-relaxed mb-3">
+                                 The patient already has a highly specific condition active (<strong>{hierarchyConflict.conflictingTerms}</strong>). This broader history will be safely documented as historical clinical context within its timeline.
+                                 {!(onsetDate && hierarchyConflict.conflictingConditions.every((c: any) => new Date(onsetDate) < new Date(c.onset))) && <span className="block mt-2 font-bold text-red-600">However, the Onset Date must be strictly older than the active child condition(s) to be valid as past history.</span>}
+                              </p>
+                           ) : (
+                              <p className="text-[13px] text-red-700/90 leading-relaxed mb-3">
+                                 A more specific condition already exists (<strong>{hierarchyConflict.conflictingTerms}</strong>). Adding a broader term is restricted to preserve clinical data quality.
+                              </p>
+                           )}
                            <div className={cn("bg-white/60 rounded p-2 text-xs font-mono inline-block shadow-sm border transition-colors", hierarchyConflict.type === 'parent' ? (status === 'Inactive' ? "text-blue-800 border-blue-200/50" : "text-red-800 border-red-200/50") : "text-amber-800 border-amber-200/50")}>
                              Active Record(s): {hierarchyConflict.conflictingTerms}
                            </div>
@@ -1301,7 +1249,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                          <button 
                            onClick={async () => {
                               if (!onsetDate) return alert("Onset date is required");
-                              if (new Date(onsetDate) > new Date()) return alert("Onset date cannot be in the future.");
+                              // Rule B.2: future date guard
+                              if (onsetDate > new Date().toISOString().split("T")[0]) return alert("Onset date cannot be later than today. Please select today or a past date.");
                               setIsSaving(true);
                               try {
                                 let finalLogs = [{
@@ -1364,7 +1313,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                        <button 
                          onClick={async () => {
                             if (!onsetDate) return alert("Onset date is required");
-                            if (new Date(onsetDate) > new Date()) return alert("Onset date cannot be in the future.");
+                            // Rule B.2: future date guard
+                            if (onsetDate > new Date().toISOString().split("T")[0]) return alert("Onset date cannot be later than today. Please select today or a past date.");
                             setIsSaving(true);
                             
                             try {
@@ -1444,32 +1394,77 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                        </button>
                       </>
                    ) : (() => {
-                      // Rule 3: Parent must be the oldest — HPI injection path
-                      const parentDateIsOlder = hierarchyConflict && hierarchyConflict.type === 'parent' &&
-                        onsetDate &&
-                        hierarchyConflict.conflictingConditions.every((c: any) => c.onset && new Date(onsetDate) < new Date(c.onset));
-                      // If parent conflict exists and date is NOT older → block entirely
-                      const isParentBlocked = hierarchyConflict && hierarchyConflict.type === 'parent' && !parentDateIsOlder;
-                      // If parent conflict exists and date IS older → show HPI Inject button instead of Save
-                      if (parentDateIsOlder) {
-                        return (
-                          <button
-                            onClick={handleHPIInjection}
-                            disabled={isSaving}
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
-                          >
-                            {isSaving ? 'Injecting...' : '✓ Inject as HPI into Active Condition'}
-                          </button>
-                        );
-                      }
-                      // Normal flow: hide Save if blocked by parent rule or show Save
-                      return isParentBlocked ? null : (
-                        <button 
-                    onClick={() => {
+                     const isParentExceptionMet = hierarchyConflict && hierarchyConflict.type === 'parent' && 
+                                                 status === 'Inactive' && 
+                                                 onsetDate && 
+                                                 hierarchyConflict.conflictingConditions.every((c: any) => new Date(onsetDate) < new Date(c.onset));
+                     const hideSave = hierarchyConflict && hierarchyConflict.type === 'parent' && !isParentExceptionMet;
+                     return hideSave ? null : (
+                       <button 
+                    onClick={async () => {
                        if (!onsetDate) return alert("Onset date is required");
-                       // Rule 1: block future dates
-                       if (new Date(onsetDate) > new Date()) return alert("Onset date cannot be in the future.");
-                       
+                       // Rule B.2: future date guard (JS layer - max attr is UI only)
+                       const todayStr = new Date().toISOString().split("T")[0];
+                       if (onsetDate > todayStr) return alert("Onset date cannot be later than today. Please select today or a past date.");
+
+                       // Rule C - parent conflict with valid earlier date -> HPI injection
+                       if (hierarchyConflict?.type === 'parent' && status === 'Inactive') {
+                         const validation = validateDiagnosisHierarchyAction({
+                           targetCode: selectedConcept?.conceptId ?? '',
+                           targetTerm: selectedConcept?.term ?? '',
+                           targetOnset: onsetDate,
+                           targetStatus: 'Inactive',
+                           existingConditions: conditions.map((c) => ({
+                             id: c.id,
+                             snomed_code: c.snomed_code,
+                             term: c.term,
+                             onset: c.onset ? c.onset.split('T')[0] : null,
+                             status: c.status,
+                           })),
+                           hierarchyData: { conflict: 'parent', conflictingCodes: hierarchyConflict.conflictingCodes },
+                           today: todayStr,
+                         });
+
+                         if (!validation.allowed) return alert(validation.message);
+
+                         if (validation.actionType === 'ADD_PARENT_AS_HPI') {
+                           setIsSaving(true);
+                           try {
+                             await Promise.all(
+                               validation.affectedIds.map(async (condId) => {
+                                 const target = conditions.find((cond) => cond.id === condId);
+                                 if (!target) return;
+                                 const hpiLog = {
+                                   date: onsetDate,
+                                   system_date: new Date().toISOString(),
+                                   action: 'HPI Entry',
+                                   note: `Historical onset of broader condition: ${selectedConcept?.term}`,
+                                   user: getUserIdentity(),
+                                 };
+                                 await fetchWithAuth(`/api/patients/${patientId}/conditions/${condId}`, {
+                                   method: 'PUT',
+                                   headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify({ ...target, logs: [...(target.logs || []), hpiLog] }),
+                                 });
+                               })
+                             );
+                             setIsAddModalOpen(false);
+                             setAddStep(1);
+                             setSelectedConcept(null);
+                             setOnsetDate("");
+                             setDescription("");
+                             setHierarchyConflict(null);
+                             setDuplicateError(null);
+                             fetchConditions();
+                           } catch (err) {
+                             console.error(err);
+                           } finally {
+                             setIsSaving(false);
+                           }
+                           return;
+                         }
+                       }
+
                          const savePayload = () => {
                            setIsSaving(true);
                            
