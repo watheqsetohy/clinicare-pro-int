@@ -888,7 +888,13 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                           });
                           
                           const filteredLogs = logViewTab === 'chronological' 
-                                ? sortedLogs.filter(log => log.action !== 'Added as Inactive')
+                                ? sortedLogs.filter(log =>
+                                    log.action !== 'Added as Inactive' &&
+                                    log.action !== 'Deactivated' &&
+                                    log.action !== 'Superseded' &&
+                                    log.action !== 'Status Updated' &&
+                                    log.action !== 'Reactivated'
+                                  )
                                 : sortedLogs;
 
                           return filteredLogs.length > 0 ? (
@@ -1251,6 +1257,11 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                               if (!onsetDate) return alert("Onset date is required");
                               // Rule B.2: future date guard
                               if (onsetDate > new Date().toISOString().split("T")[0]) return alert("Onset date cannot be later than today. Please select today or a past date.");
+
+                              // Exact duplicate check: block same SNOMED code being added as a separate record
+                              const _dupCheck = conditions.find((cond) => cond.snomed_code === selectedConcept?.conceptId && cond.status === 'Active');
+                              if (_dupCheck) return alert("This condition is already recorded and active. Please edit the existing record if needed.");
+
                               setIsSaving(true);
                               try {
                                 let finalLogs = [{
@@ -1341,6 +1352,10 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
 
                               // Rule 2B: older sibling → inject as HPI into the active condition
                               if (_v.actionType === 'ADD_CHILD_AS_HPI') {
+                                // Block injecting the EXACT SAME condition as HPI into itself
+                                const _sameCodeActive = conditions.find((cond) => cond.snomed_code === selectedConcept?.conceptId && cond.status === 'Active');
+                                if (_sameCodeActive) return alert("This condition is already recorded and active. Please edit the existing record if needed.");
+
                                 setIsSaving(true);
                                 try {
                                   await Promise.all(
