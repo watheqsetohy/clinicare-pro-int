@@ -42,6 +42,7 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
       <div className={cn("absolute left-0 top-1 w-[24px] h-[24px] border-[3px] border-white rounded-full z-10 flex items-center justify-center", logViewTab === 'chronological' ? "bg-indigo-50" : "bg-slate-100")}>
         {logViewTab === 'chronological' ? (
            <div className={cn("w-2 h-2 rounded-full scale-125", 
+              log.severity === 'Severe' ? "bg-red-500" :
               log.isOnset ? "bg-slate-600" :
               log.action === 'HPI Entry' ? "bg-orange-500" :
               log.action?.includes('Active') ? "bg-blue-500" :
@@ -207,6 +208,7 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
         <div className="flex flex-col">
           <div className={cn("text-[11px] uppercase mt-0.5 font-bold", 
              logViewTab === 'chronological' ? (
+                log.severity === 'Severe' ? "text-red-600" :
                 log.isOnset ? "text-slate-500" :
                 log.action === 'HPI Entry' ? "text-orange-600" :
                 log.action?.includes('Active') ? "text-blue-600" :
@@ -219,6 +221,7 @@ const TimelineLogItem = ({ log, logViewTab, flyoutCondition, patientId }: any) =
           </div>
           <div className={cn("text-[13px] font-semibold leading-tight mt-0.5",
             logViewTab === 'chronological' ? (
+              log.severity === 'Severe' ? "text-red-700" :
               log.isOnset ? "text-slate-600" :
               log.action === 'HPI Entry' ? "text-orange-700" :
               log.action?.includes('Active') ? "text-blue-700" :
