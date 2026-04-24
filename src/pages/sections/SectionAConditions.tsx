@@ -1437,6 +1437,10 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                         action: 'HPI Entry',
                                         note: `Historical occurrence of: ${selectedConcept?.term}`,
                                         user: getUserIdentity(),
+                                        hpi_term: selectedConcept?.term,
+                                        hpi_code: selectedConcept?.conceptId,
+                                        hpi_severity: severity,
+                                        hpi_acuity: acuity,
                                       };
                                       await fetchWithAuth(`/api/patients/${patientId}/conditions/${condId}`, {
                                         method: 'PUT',
@@ -1613,6 +1617,10 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                    action: 'HPI Entry',
                                    note: `Historical onset of broader condition: ${selectedConcept?.term}`,
                                    user: getUserIdentity(),
+                                   hpi_term: selectedConcept?.term,
+                                   hpi_code: selectedConcept?.conceptId,
+                                   hpi_severity: severity,
+                                   hpi_acuity: acuity,
                                  };
                                  await fetchWithAuth(`/api/patients/${patientId}/conditions/${condId}`, {
                                    method: 'PUT',

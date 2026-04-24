@@ -560,10 +560,12 @@ app.get('/api/patients/:id/conditions/:code/cluster-logs', requireAuth, auditLog
         for (const log of row.logs) {
            mergedLogs.push({
              ...log,
-             condition_term: row.term,
-             condition_code: row.snomed_code,
-             severity: row.severity,
-             acuity: row.acuity
+             // For HPI Entry logs, use the injected condition's own identity
+             // (stored at creation time) instead of the host condition's data
+             condition_term: (log.action === 'HPI Entry' && log.hpi_term) ? log.hpi_term : row.term,
+             condition_code: (log.action === 'HPI Entry' && log.hpi_code) ? log.hpi_code : row.snomed_code,
+             severity: (log.action === 'HPI Entry' && log.hpi_severity) ? log.hpi_severity : row.severity,
+             acuity: (log.action === 'HPI Entry' && log.hpi_acuity) ? log.hpi_acuity : row.acuity
            });
         }
       }
