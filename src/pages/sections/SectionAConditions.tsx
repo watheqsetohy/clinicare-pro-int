@@ -1061,7 +1061,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                  type: hierarchyData.conflict,
                                  conflictingCodes: hierarchyData.conflictingCodes,
                                  conflictingTerms: conflictingConds.map(c => c.term).join(', ') || 'Unknown Condition',
-                                 conflictingConditions: conflictingConds
+                                 conflictingConditions: conflictingConds,
+                                 parentCodes: hierarchyData.parentCodes || []
                                });
                                
                                if (conflictingConds.length > 0 && !isReactivating) {
@@ -1345,6 +1346,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                 hierarchyData: {
                                   conflict: hierarchyConflict.type as any,
                                   conflictingCodes: hierarchyConflict.conflictingCodes,
+                                  parentCodes: hierarchyConflict.parentCodes || [],
                                 },
                                 today: _today,
                               });
@@ -1499,7 +1501,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                              onset: c.onset ? c.onset.split('T')[0] : null,
                              status: c.status,
                            })),
-                           hierarchyData: { conflict: 'parent', conflictingCodes: hierarchyConflict.conflictingCodes },
+                           hierarchyData: { conflict: 'parent', conflictingCodes: hierarchyConflict.conflictingCodes, parentCodes: hierarchyConflict.parentCodes || [] },
                            today: todayStr,
                          });
 
@@ -1648,7 +1650,7 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                           onset: cond.onset ? cond.onset.split('T')[0] : null,
                                           status: cond.status,
                                         })),
-                                        hierarchyData: { conflict: data.conflict, conflictingCodes: data.conflictingCodes || [] },
+                                        hierarchyData: { conflict: data.conflict, conflictingCodes: data.conflictingCodes || [], parentCodes: data.parentCodes || [] },
                                         today: todayForActivate,
                                       });
 
@@ -1662,7 +1664,8 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                         type: data.conflict,
                                         conflictingCodes: data.conflictingCodes,
                                         conflictingTerms: conflictingConds.map(c => c.term).join(', ') || 'Unknown Condition',
-                                        conflictingConditions: conflictingConds
+                                        conflictingConditions: conflictingConds,
+                                        parentCodes: data.parentCodes || []
                                       });
                                    } else {
                                      savePayload();

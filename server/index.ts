@@ -1047,7 +1047,30 @@ app.get('/api/snomed/check-hierarchy', requireAuth, async (req, res) => {
     `, [targetCode, existingCodes]);
 
     if (siblings.length > 0) {
-      return res.json({ conflict: 'sibling', conflictingCodes: siblings.map(s => s.sibling_id) });
+      // Also find the shared parent codes so validation can check Rule 2c
+      const sharedParentCodes: string[] = [];
+      try {
+        const { rows: sharedParents } = await query(`
+          WITH a1 AS (
+            SELECT destination_id AS id FROM snomed_relationship 
+            WHERE source_id = $1 AND type_id = '116680003' AND active = 1
+          ),
+          a2 AS (
+            SELECT destination_id AS id FROM snomed_relationship 
+            WHERE source_id = ANY($2::varchar[]) AND type_id = '116680003' AND active = 1
+          )
+          SELECT DISTINCT a1.id FROM a1 
+          JOIN a2 ON a1.id = a2.id
+          WHERE a1.id NOT IN ('138875005', '404684003', '64572001', '362965005', '413350009')
+        `, [targetCode, siblings.map(s => s.sibling_id)]);
+        sharedParents.forEach(r => sharedParentCodes.push(r.id));
+      } catch { /* silently proceed without parent codes */ }
+
+      return res.json({ 
+        conflict: 'sibling', 
+        conflictingCodes: siblings.map(s => s.sibling_id),
+        parentCodes: sharedParentCodes
+      });
     }
 
     res.json({ conflict: 'none' });
