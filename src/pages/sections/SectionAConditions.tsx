@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { fetchWithAuth } from '../../lib/authSession';
 import { Plus, Search, CheckCircle2, XCircle, Clock, AlertTriangle, ArrowLeft, Trash2, Edit2, ChevronDown, ChevronRight, FileText, Activity, Server, User, MapPin, Shield, Briefcase, MessageSquare, Phone, Mail } from "lucide-react";
 import { cn } from "@/src/lib/utils";
@@ -1358,8 +1358,38 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                                 const _sameCodeActive = conditions.find((cond) => cond.snomed_code === selectedConcept?.conceptId && cond.status === 'Active');
                                 if (_sameCodeActive) return alert("This condition is already recorded and active. Please edit the existing record if needed.");
 
+                                // Also block if already recorded as Inactive
+                                const _sameCodeInactive = conditions.find((cond) => cond.snomed_code === selectedConcept?.conceptId && (cond.status === 'Inactive' || cond.status === 'Superseded'));
+                                if (_sameCodeInactive) return alert("This condition is already recorded in the patient's history. Please edit the existing record if needed.");
+
                                 setIsSaving(true);
                                 try {
+                                  // Step 1: Create the historical condition as an Inactive record
+                                  const hpiConditionPayload = {
+                                    term: selectedConcept?.term,
+                                    snomed_code: selectedConcept?.conceptId,
+                                    onset: onsetDate,
+                                    severity: severity,
+                                    status: 'Inactive',
+                                    source: source,
+                                    acuity: acuity,
+                                    notes: description || `Historical condition — predates current active diagnosis.`,
+                                    logs: [{
+                                      date: onsetDate || new Date().toISOString().split('T')[0],
+                                      system_date: new Date().toISOString(),
+                                      action: 'Added as Inactive',
+                                      note: `Recorded as historical (HPI) — onset predates current active diagnosis.`,
+                                      user: getUserIdentity(),
+                                    }],
+                                    session_id: activeSessionId,
+                                  };
+                                  await fetchWithAuth(`/api/patients/${patientId}/conditions`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(hpiConditionPayload),
+                                  });
+
+                                  // Step 2: Inject HPI log entry into the active sibling's timeline
                                   await Promise.all(
                                     _v.affectedIds.map(async (condId) => {
                                       const target = conditions.find((cond) => cond.id === condId);
@@ -1510,6 +1540,32 @@ export function SectionAConditions({ patientId, activeSessionId, isHistoricalSes
                          if (validation.actionType === 'ADD_PARENT_AS_HPI') {
                            setIsSaving(true);
                            try {
+                             // Step 1: Create the parent as an Inactive condition record
+                             const parentPayload = {
+                               term: selectedConcept?.term,
+                               snomed_code: selectedConcept?.conceptId,
+                               onset: onsetDate,
+                               severity: severity,
+                               status: 'Inactive',
+                               source: source,
+                               acuity: acuity,
+                               notes: description || 'Historical parent condition — predates active specific diagnosis.',
+                               logs: [{
+                                 date: onsetDate || new Date().toISOString().split('T')[0],
+                                 system_date: new Date().toISOString(),
+                                 action: 'Added as Inactive',
+                                 note: 'Recorded as historical (HPI) — broader parent condition onset predates active child.',
+                                 user: getUserIdentity(),
+                               }],
+                               session_id: activeSessionId,
+                             };
+                             await fetchWithAuth(`/api/patients/${patientId}/conditions`, {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify(parentPayload),
+                             });
+                         
+                             // Step 2: Inject HPI log into the active child's timeline
                              await Promise.all(
                                validation.affectedIds.map(async (condId) => {
                                  const target = conditions.find((cond) => cond.id === condId);
