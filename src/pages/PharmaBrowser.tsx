@@ -43,6 +43,7 @@ interface BrandDetail {
   lasa: boolean;
   refrigerated: boolean;
   market_shortage: boolean;
+  scd_name?: string;
   scdf_name: string;
   atc_code: string;
   image_id?: string;
@@ -78,10 +79,7 @@ export function PharmaBrowser() {
 
   // Search logic
   useEffect(() => {
-    if (!q && !status) {
-      setResults([]);
-      return;
-    }
+    // If empty, it will just fetch the first 50 results (the complete directory view)
     
     const timeoutId = setTimeout(async () => {
       setLoading(true);
@@ -441,6 +439,8 @@ export function PharmaBrowser() {
                         <InfoRow label="Company" value={detail.company || '-'} />
                         <InfoRow label="ATC Code" value={<span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-700">{detail.atc_code}</span>} />
                         <InfoRow label="Market Shortage" value={detail.market_shortage ? <span className="text-red-600 font-bold">Yes</span> : 'No'} />
+                        <InfoRow label="SCD / SCD IN" value={<span className="text-slate-600 text-xs">{detail.scd_name || detail.ingredients?.map(i => i.api).join(' + ') || 'N/A'}</span>} />
+                        <InfoRow label="SCDF (Dose Form)" value={<span className="text-slate-600 text-xs">{detail.scdf_name || 'N/A'}</span>} />
                       </div>
                     </div>
                     

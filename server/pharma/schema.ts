@@ -574,6 +574,9 @@ export async function initPharmaSchema() {
       b.formulary_status,
       b.company,
       b.his_coded,
+      b.image_id,
+      b.vezeeta_image_url,
+      s.name_en AS scd_name,
       -- Legal status: Brand override > SCD > IR clinical rule
       COALESCE(
         b.legal_status_override,

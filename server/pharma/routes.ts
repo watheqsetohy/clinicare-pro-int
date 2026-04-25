@@ -29,9 +29,10 @@ router.get('/search', async (req: Request, res: Response) => {
     const limit   = Math.min(parseInt(req.query.limit as string) || 25, 100);
     const offset  = parseInt(req.query.offset as string) || 0;
 
-    if (!q && !atc && !status) {
-      return res.status(400).json({ error: 'At least one of q, atc, or status is required.' });
-    }
+    // Allow empty search to return complete directory
+    // if (!q && !atc && !status) {
+    //   return res.status(400).json({ error: 'At least one of q, atc, or status is required.' });
+    // }
 
     const conditions: string[] = [];
     const params: any[] = [];
