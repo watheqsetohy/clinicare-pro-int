@@ -85,6 +85,7 @@ const navItems = [
   { icon: Activity,        label: "Labs & Trends",     to: "/labs" },
   { icon: FileText,        label: "Reports",           to: "/reports" },
   { icon: Search,          label: "SNOMED Browser",    to: "/snomed" },
+  { icon: Pill,            label: "Medication Browser",to: "/pharma" },
   { icon: CheckSquare,     label: "Tasks & Follow-ups",to: "/tasks" },
   { icon: Settings,        label: "Admin",             to: "/admin" },
 ];

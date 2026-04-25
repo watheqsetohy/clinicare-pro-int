@@ -9,7 +9,7 @@ import { Layout } from "./components/layout/Layout";
 import { Patients } from "./pages/Patients";
 import { Workspace } from "./pages/Workspace";
 import { SnomedBrowser } from "./pages/SnomedBrowser";
-import { RxNormBrowser } from "./pages/RxNormBrowser";
+import { PharmaBrowser } from "./pages/PharmaBrowser";
 import { HomePage } from "./pages/HomePage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { SuperAdminDashboard } from "./pages/SuperAdminDashboard";
@@ -79,7 +79,7 @@ export default function App() {
           <Route path="/reports" element={<div className="p-8 text-center text-slate-500">Reports (Coming Soon)</div>} />
           <Route path="/tasks" element={<div className="p-8 text-center text-slate-500">Tasks &amp; Follow-ups (Coming Soon)</div>} />
           <Route path="/snomed" element={<SnomedBrowser />} />
-          <Route path="/rxnorm" element={<RxNormBrowser />} />
+          <Route path="/pharma" element={<PharmaBrowser />} />
           <Route path="/medication-scraper" element={<MedicationScraper />} />
         </Route>
 

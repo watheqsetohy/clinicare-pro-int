@@ -11,6 +11,7 @@ import * as cheerio from 'cheerio';
 import dotenv from 'dotenv';
 import { pool, query } from './db.js';
 import { initSchema } from './schema.js';
+import { initPharmaSchema } from './pharma/schema.js';
 import { seedDatabase } from './seed.js';
 import { requireAuth, issueToken } from './middleware/auth.js';
 import { requireRole } from './middleware/requireRole.js';
@@ -74,7 +75,14 @@ const loginLimiter = rateLimit({
 (async () => {
   try {
     await initSchema();
+    await initPharmaSchema();
     await seedDatabase();
+
+    // Pharma seed — Layer 1+2 reference data from Excel
+    const { seedPharmaLayer1and2, seedPharmaLayer3, seedPharmaLayer4 } = await import('./pharma/seed.js');
+    await seedPharmaLayer1and2();
+    await seedPharmaLayer3();
+    await seedPharmaLayer4();
 
     // ── Production mode: serve built frontend from /dist ──
     const __dirname_server = path.dirname(fileURLToPath(import.meta.url));
@@ -105,6 +113,10 @@ process.on('SIGINT', () => {
   console.log('[Server] SIGINT received — closing connections.');
   pool.end(() => process.exit(0));
 });
+
+// ─── Pharma API Router ──────────────────────────────────────────────────────
+import pharmaRouter from './pharma/routes.js';
+app.use('/api/pharma', pharmaRouter);
 
 // ════════════════════════════════════════════════════════════════════════════
 // AUTH
