@@ -39,19 +39,10 @@ router.get('/search', async (req: Request, res: Response) => {
     let idx = 1;
 
     if (q) {
-      // Try trigram similarity first; fall back to ILIKE for short queries
-      if (q.length >= 3) {
-        conditions.push(`(name_en % $${idx} OR name_ar % $${idx})`);
-      } else {
-        conditions.push(`(name_en ILIKE $${idx} OR name_ar ILIKE $${idx})`);
-        params.push(`%${q}%`);
-        idx++;
-        // Skip the similarity order — use ILIKE match
-      }
-      if (q.length >= 3) {
-        params.push(q);
-        idx++;
-      }
+      // Always use ILIKE for filtering so partial words match properly
+      conditions.push(`(name_en ILIKE $${idx} OR name_ar ILIKE $${idx})`);
+      params.push(`%${q}%`);
+      idx++;
     }
     if (atc) {
       conditions.push(`atc_code ILIKE $${idx}`);
@@ -65,9 +56,7 @@ router.get('/search', async (req: Request, res: Response) => {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const orderBy = q && q.length >= 3
-      ? `ORDER BY similarity(name_en, $1) DESC, name_en ASC`
-      : `ORDER BY name_en ASC`;
+    const orderBy = `ORDER BY name_en ASC`;
 
     params.push(limit, offset);
     const limitPlaceholder = `$${idx}`;
