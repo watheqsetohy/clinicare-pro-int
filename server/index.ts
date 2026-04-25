@@ -1733,7 +1733,7 @@ app.get('/api/nationalities', (_req, res) => {
   ]);
 });
 
-app.get('/', (_req, res) => res.json({ status: 'CLINICare Pro API — Running ✅' }));
+app.get('/api/status', (_req, res) => res.json({ status: 'CLINICare Pro API — Running ✅' }));
 
 // ════════════════════════════════════════════════════════════════════════════
 // ARH — ACTION ROUTING HUB API (Read-only from existing tables)
