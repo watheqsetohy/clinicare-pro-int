@@ -63,6 +63,8 @@ export function PharmaBrowser() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
@@ -77,6 +79,11 @@ export function PharmaBrowser() {
   const [ddiResult, setDdiResult] = useState<DdiResult | null>(null);
   const [ddiLoading, setDdiLoading] = useState(false);
 
+  // Reset offset when query changes
+  useEffect(() => {
+    setOffset(0);
+  }, [q, status]);
+
   // Search logic
   useEffect(() => {
     // If empty, it will just fetch the first 50 results (the complete directory view)
@@ -88,11 +95,18 @@ export function PharmaBrowser() {
         if (q) queryParams.set('q', q);
         if (status) queryParams.set('status', status);
         queryParams.set('limit', '50');
+        queryParams.set('offset', offset.toString());
         
         const res = await fetch(`/api/pharma/search?${queryParams.toString()}`);
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
-        setResults(data.results || []);
+        
+        if (offset === 0) {
+          setResults(data.results || []);
+        } else {
+          setResults(prev => [...prev, ...(data.results || [])]);
+        }
+        setTotalResults(data.total || 0);
       } catch (err) {
         console.error(err);
       } finally {
@@ -101,7 +115,7 @@ export function PharmaBrowser() {
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [q, status]);
+  }, [q, status, offset]);
 
   // Load brand details
   useEffect(() => {
@@ -208,7 +222,7 @@ export function PharmaBrowser() {
             <div className="flex gap-2">
               <select 
                 value={status}
-                onChange={e => setStatus(e.target.value)}
+                onChange={e => { setStatus(e.target.value); setOffset(0); }}
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Formularies</option>
@@ -216,6 +230,11 @@ export function PharmaBrowser() {
                 <option value="Non-Formulary">Non-Formulary</option>
               </select>
             </div>
+            {totalResults > 0 && (
+              <div className="text-xs font-semibold text-slate-500 mt-2">
+                Showing {results.length} of {totalResults.toLocaleString()} medications
+              </div>
+            )}
           </div>
         </div>
 
@@ -271,6 +290,16 @@ export function PharmaBrowser() {
               <Search className="w-8 h-8 text-slate-200" />
               <p>Type to search medications</p>
             </div>
+          )}
+          
+          {results.length > 0 && results.length < totalResults && (
+            <button 
+              onClick={() => setOffset(prev => prev + 50)}
+              disabled={loading}
+              className="w-full py-3 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-xl border border-indigo-100 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Load More Medications'}
+            </button>
           )}
         </div>
       </div>
