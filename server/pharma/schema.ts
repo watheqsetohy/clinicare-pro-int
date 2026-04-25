@@ -565,6 +565,7 @@ export async function initPharmaSchema() {
   // =============================================
   // Deterministic resolution: Brand > SCD > SCDF > IR Clinical Rule
   await pool.query(`
+    DROP VIEW IF EXISTS pharma.v_brand_resolved CASCADE;
     CREATE OR REPLACE VIEW pharma.v_brand_resolved AS
     SELECT
       b.brand_id,
