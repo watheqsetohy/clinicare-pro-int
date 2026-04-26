@@ -288,7 +288,7 @@ export function PharmaBrowser() {
   const ddisByAPI: any[] = [];
 
   return (
-    <div style={{ zoom: '88%' }} className="h-[calc(114vh-5rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
+    <div style={{ zoom: '88%', height: 'calc(113.63vh - 4.54rem)' }} className="flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200 w-full">
       {/* LEFT PANEL: Search & Results */}
       <div style={{ width: sidebarWidth }} className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
         {/* Title Header */}
@@ -508,10 +508,11 @@ export function PharmaBrowser() {
             <Activity className="w-8 h-8 text-indigo-300 animate-spin" />
           </div>
         ) : detail ? (
-          <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 animate-fadeIn relative">
-            {/* Page Header */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
-              <div>
+          <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-black/20 animate-fadeIn relative">
+            {/* Page Header (Frozen) */}
+            <div className="sticky top-0 z-50 bg-gray-50/95 dark:bg-slate-900/95 backdrop-blur-md px-6 py-6 md:px-8 border-b border-slate-200 dark:border-slate-800 shadow-sm mb-8">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
                     {detail.name_en}
@@ -557,8 +558,11 @@ export function PharmaBrowser() {
                   {loadingAi ? 'Analyzing...' : 'Clinical AI Insight'}
                 </button>
               </div>
+              </div>
             </div>
 
+            {/* Inner Content Wrapper */}
+            <div className="px-6 md:px-8 pb-8">
             {aiSummary && (
               <section className="mb-8 bg-white rounded-2xl border border-indigo-100 p-6 shadow-sm animate-fadeIn">
                 <div className="flex items-center gap-2 mb-4">
@@ -951,6 +955,7 @@ export function PharmaBrowser() {
             </section>
 
             <div className="h-10"></div>
+          </div>
           </div>) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
             <div className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center mb-6">
