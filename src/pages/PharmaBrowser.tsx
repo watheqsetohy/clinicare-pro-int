@@ -122,7 +122,9 @@ export function PharmaBrowser() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      const newWidth = e.clientX / 0.8; // account for 80% zoom
+      // e.clientX is in screen pixels. Subtract the 80px Layout sidebar (ml-20),
+      // then divide by 0.88 zoom to convert to CSS pixels inside the zoomed container.
+      const newWidth = (e.clientX - 80) / 0.88;
       if (newWidth >= 250 && newWidth <= 800) {
         setSidebarWidth(newWidth);
       }
