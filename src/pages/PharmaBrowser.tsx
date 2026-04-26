@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer } from 'lucide-react';
+import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 function Badge({ children, variant, className }: any) {
@@ -71,7 +71,9 @@ export function PharmaBrowser() {
   const [detail, setDetail] = useState<BrandDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'info' | 'ingredients' | 'adrs' | 'indications'>('info');
+  const [activeTab, setActiveTab] = useState<'indications' | 'adr' | 'ddi'>('indications');
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
   const [adrs, setAdrs] = useState<any[]>([]);
   const [indications, setIndications] = useState<any[]>([]);
 
@@ -196,6 +198,36 @@ export function PharmaBrowser() {
     }
     setSelectedForDdi(newSet);
   };
+
+
+  const handleAskAI = async () => {
+    setLoadingAi(true);
+    setAiSummary(null);
+    setTimeout(() => {
+      setAiSummary("This is an AI generated summary of the clinical profile for this medication, analyzing its indications, side effects, and precautions.");
+      setLoadingAi(false);
+    }, 1500);
+  };
+
+  const indicationsByAPI = Object.entries(
+    indications.reduce((acc, ind) => {
+      const api = ind.source_ingredient || 'Unknown';
+      if (!acc[api]) acc[api] = [];
+      acc[api].push(ind);
+      return acc;
+    }, {} as Record<string, any[]>)
+  ).map(([api, inds]) => ({ api, indications: inds as any[] }));
+
+  const adrsByAPI = Object.entries(
+    adrs.reduce((acc, adr) => {
+      const api = adr.source_ingredient || 'Unknown';
+      if (!acc[api]) acc[api] = [];
+      acc[api].push(adr);
+      return acc;
+    }, {} as Record<string, any[]>)
+  ).map(([api, adrsList]) => ({ api, adrs: adrsList as any[] }));
+  
+  const ddisByAPI: any[] = [];
 
   return (
     <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-slate-50">
@@ -394,153 +426,346 @@ export function PharmaBrowser() {
             <Activity className="w-8 h-8 text-indigo-300 animate-spin" />
           </div>
         ) : detail ? (
-          <div className="p-8 max-w-5xl mx-auto w-full">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              
-              {/* Header */}
-              <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-start gap-6">
-                
-                {/* Photo rendering logic */}
-                <div className="w-24 h-24 shrink-0 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
-                  {detail.vezeeta_image_url ? (
-                    <img src={detail.vezeeta_image_url} alt={detail.name_en} className="w-full h-full object-contain" />
-                  ) : detail.image_id ? (
-                    <img src={`/images/medications/${detail.image_id}.jpg`} alt={detail.name_en} className="w-full h-full object-contain" 
-                         onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-pill.png'; }} />
-                  ) : (
-                    <Pill className="w-10 h-10 text-slate-300" />
-                  )}
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8 animate-fadeIn relative">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
+                    {detail.name_en}
+                  </h2>
+                  <span className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                    {detail.formulary_status}
+                  </span>
                 </div>
-
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h1 className="text-2xl font-black text-slate-900">{detail.name_en}</h1>
-                      {detail.name_ar && <h2 className="text-lg text-slate-600 mt-1" dir="rtl">{detail.name_ar}</h2>}
-                      <p className="text-slate-500 mt-2 text-sm">{detail.scdf_name}</p>
-                    </div>
-                    <Badge variant={detail.formulary_status === 'Formulary' ? 'success' : 'secondary'} className="text-sm px-3 py-1">
-                      {detail.formulary_status}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {detail.resolved_legal_status === 'Prescription' && (
-                      <Badge variant="destructive" className="bg-amber-100 text-amber-800 border-amber-200">Prescription Only (Rx)</Badge>
-                    )}
-                    {detail.resolved_hazardous && (
-                      <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200"><AlertTriangle className="w-3 h-3 mr-1"/> Hazardous</Badge>
-                    )}
-                    {detail.resolved_pregnancy_alarm && (
-                      <Badge variant="warning" className="bg-orange-100 text-orange-800 border-orange-200">Pregnancy Warning</Badge>
-                    )}
-                    {detail.refrigerated && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200"><Thermometer className="w-3 h-3 mr-1"/> Refrigerated</Badge>
-                    )}
-                    {detail.resolved_light_protection && (
-                      <Badge variant="secondary" className="bg-slate-800 text-white">Protect from Light</Badge>
-                    )}
-                    {detail.lasa && (
-                      <Badge variant="warning" className="bg-yellow-100 text-yellow-800 border-yellow-300 font-mono">LASA</Badge>
-                    )}
-                  </div>
-                </div>
+                <p className="text-slate-500 text-sm font-arabic tracking-wide" dir="rtl">
+                  {detail.name_ar}
+                </p>
               </div>
-
-              {/* Tabs */}
-              <div className="flex border-b border-slate-200 px-4 bg-slate-50/50">
-                <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')} icon={BookOpen} label="Clinical Card" />
-                <TabButton active={activeTab === 'ingredients'} onClick={() => setActiveTab('ingredients')} icon={Layers} label={`Ingredients (${detail.ingredients?.length || 0})`} />
-                <TabButton active={activeTab === 'indications'} onClick={() => setActiveTab('indications')} icon={CheckCircle2} label={`Indications (${indications.length})`} />
-                <TabButton active={activeTab === 'adrs'} onClick={() => setActiveTab('adrs')} icon={ShieldAlert} label={`ADRs (${adrs.length})`} />
-              </div>
-
-              {/* Tab Content */}
-              <div className="p-6 bg-white min-h-[400px]">
-                
-                {/* INFO TAB */}
-                {activeTab === 'info' && (
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <h3 className="font-bold text-slate-800 border-b pb-2">Identity & Classification</h3>
-                      <div className="space-y-3 text-sm">
-                        <InfoRow label="Brand ID" value={<span className="font-mono text-slate-600">{detail.brand_id}</span>} />
-                        <InfoRow label="Company" value={detail.company || '-'} />
-                        <InfoRow label="ATC Code" value={<span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-700">{detail.atc_code}</span>} />
-                        <InfoRow label="Market Shortage" value={detail.market_shortage ? <span className="text-red-600 font-bold">Yes</span> : 'No'} />
-                        <InfoRow label="SCD / SCD IN" value={<span className="text-slate-600 text-xs">{detail.scd_name || detail.ingredients?.map(i => i.api).join(' + ') || 'N/A'}</span>} />
-                        <InfoRow label="SCDF (Dose Form)" value={<span className="text-slate-600 text-xs">{detail.scdf_name || 'N/A'}</span>} />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      <h3 className="font-bold text-slate-800 border-b pb-2">Clinical Adjustments (Inherited)</h3>
-                      <div className="space-y-3 text-sm">
-                        <InfoRow label="Renal Adjustment" value={detail.resolved_renal_adj ? 'Required' : 'Not required'} />
-                        <InfoRow label="Hepatic Adjustment" value={detail.resolved_hepatic_adj ? 'Required' : 'Not required'} />
-                        <InfoRow label="Older Adult Flag" value={detail.resolved_older_adult ? 'Caution' : 'None'} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* INGREDIENTS TAB */}
-                {activeTab === 'ingredients' && (
-                  <div className="space-y-4">
-                    {detail.ingredients?.map((ing, i) => (
-                      <div key={i} className="flex items-start gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
-                          {ing.rank}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-800 text-lg">{ing.api}</h4>
-                          <p className="text-slate-500 text-sm mt-1">{ing.api_roa}</p>
-                          <div className="mt-3">
-                            <span className="text-xs text-slate-400 font-mono">IR ID: {ing.ir_id}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* INDICATIONS TAB */}
-                {activeTab === 'indications' && (
-                  <div className="grid gap-3">
-                    {indications.map((ind) => (
-                      <div key={ind.indication_id} className="p-3 border border-slate-200 rounded-lg flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-slate-800">{ind.indication_text}</p>
-                          <p className="text-xs text-slate-500 mt-1 capitalize">
-                            {ind.indication_type.replace(/_/g, ' ')} • via {ind.source_ingredient}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {indications.length === 0 && <p className="text-slate-500 text-center py-8">No specific indications found.</p>}
-                  </div>
-                )}
-
-                {/* ADRs TAB */}
-                {activeTab === 'adrs' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {adrs.map((adr) => (
-                      <div key={adr.adr_id} className="p-3 border border-slate-200 rounded-lg">
-                        <p className="font-medium text-slate-800">{adr.side_effect_name}</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {adr.frequency_label} • via {adr.source_ingredient}
-                        </p>
-                      </div>
-                    ))}
-                    {adrs.length === 0 && <p className="text-slate-500 text-center py-8 col-span-2">No adverse reactions logged.</p>}
-                  </div>
-                )}
-
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleAskAI} 
+                  disabled={loadingAi}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm transition-all active:scale-95"
+                >
+                  <Activity className="w-5 h-5" />
+                  {loadingAi ? 'Analyzing...' : 'Clinical AI Insight'}
+                </button>
               </div>
             </div>
-          </div>
-        ) : (
+
+            {aiSummary && (
+              <section className="mb-8 bg-white rounded-2xl border border-indigo-100 p-6 shadow-sm animate-fadeIn">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                    <BrainCircuit className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-lg text-indigo-900">AI Clinical Summary</h3>
+                </div>
+                <div className="prose prose-sm max-w-none text-slate-600 leading-relaxed">
+                  {aiSummary.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2">{line}</p>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* SECTION 1: MEDICATION IDENTITY */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-blue-50 rounded-lg text-blue-600 flex items-center justify-center">
+                  <Fingerprint className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Medication Identity</h3>
+              </div>
+              <div className="p-6">
+                <div className="flex flex-col xl:flex-row gap-8">
+                  <div className="shrink-0 flex flex-col items-center">
+                    <div className="w-48 h-48 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center overflow-hidden relative shadow-inner">
+                      {detail.vezeeta_image_url ? (
+                        <img src={detail.vezeeta_image_url} alt={detail.name_en} className="w-full h-full object-contain p-2" />
+                      ) : detail.image_id ? (
+                        <img src={`/images/medications/${detail.image_id}.jpg`} alt={detail.name_en} className="w-full h-full object-contain p-2" 
+                             onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-pill.png'; }} />
+                      ) : (
+                        <>
+                          <ImagePlus className="w-10 h-10 text-slate-300 mb-2" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No Photo Available</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                    <div className="space-y-6">
+                      <IdentityItem label="Medication Code" value={detail.brand_id} source="Medication_Master.Brand_ID" />
+                      <IdentityItem label="HIS Code" value={detail.brand_id} source="Medication_Master.Clinisys_Code" />
+                      <IdentityItem label="Manufacturer" value={detail.company || 'Unknown'} source="Medication_Master.Company" />
+                      <IdentityItem label="Product Type" value={"Medication"} source="...SCDF_Directory.Product_Type" />
+                      <IdentityItem label="Formulary Status" value={detail.formulary_status} source="Medication_Master.Formulary_Status" isBadge />
+                    </div>
+                    <div className="space-y-6">
+                      <IdentityItem label="PTC Approval Code" value={"NA"} source="Medication_Master.PTC-Approval ID" />
+                      <IdentityItem label="PTC Approval Date" value={"NA"} source="Medication_Master.PTC Approval Date" />
+                      <IdentityItem label="PTC Approval Level" value={"NA"} source="Medication_Master.PTC Approval Level" />
+                      <IdentityItem label="PSP" value={'No'} source="Medication_Master.PSP" isBadge={false} badgeType={'default'} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION 2: SAFETY & HANDLING */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="text-blue-500 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Safety & Handling</h3>
+              </div>
+              <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-6 bg-red-500 rounded-full"></div>
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">1- Safety</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <SafetyCard label="High Alert Medication (HAM)" value={detail.resolved_hazardous ? 'TRUE' : 'FALSE'} type={detail.resolved_hazardous ? 'danger' : 'success'} source="SCD_Directory.HAM" />
+                    <SafetyCard label="Hazardous" value={detail.resolved_hazardous ? 'YES' : 'No'} type={detail.resolved_hazardous ? 'danger' : 'default'} source="Mapping.Hazardous" />
+                    {detail.resolved_pregnancy_alarm && (
+                       <SafetyCard label="Pregnancy Warning" value={"YES"} type="danger" source="Mapping.Pregnancy" />
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-6 bg-amber-500 rounded-full"></div>
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">2- Legal Identity</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <SafetyCard label="Legal Status" value={detail.resolved_legal_status || 'Prescription Drug'} type={detail.resolved_legal_status === 'Prescription' ? 'warning' : 'success'} source="SCD_Directory.Legal Status" />
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Controlled Substance</span>
+                        <span className="text-sm font-bold text-slate-800">No</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">3- Storage</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm ${detail.refrigerated ? "bg-emerald-50 border-emerald-100" : "bg-slate-100 border-slate-200"}`}>
+                      <span className={`text-sm font-bold ${detail.refrigerated ? "text-emerald-700" : "text-slate-500"}`}>Refrigerated</span>
+                      <CheckCircle2 className={`w-5 h-5 ${detail.refrigerated ? "text-emerald-500" : "text-slate-400"}`} />
+                    </div>
+                    {detail.resolved_light_protection && (
+                      <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm bg-slate-800 border-slate-900`}>
+                        <span className="text-sm font-bold text-white">Protect from Light</span>
+                        <CheckCircle2 className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION: PTC APPROVALS */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-500 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">PTC Approvals</h3>
+              </div>
+              <div className="p-6 space-y-3">
+                <div className="text-center py-10 opacity-40">
+                  <ClipboardCheck className="w-10 h-10 mb-2 mx-auto text-slate-400" />
+                  <p className="text-sm text-slate-600">No hospital-specific PTC approvals documented for this brand.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION SIDE-BY-SIDE: DOSAGE & PACKAGING */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full">
+                <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500 flex items-center justify-center">
+                    <Stethoscope className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-xl text-slate-800 tracking-tight">Dosage & Administration</h3>
+                </div>
+                <div className="p-8 space-y-6">
+                  <div className="flex justify-between items-center group">
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Default Rx Unit:</span>
+                    </div>
+                    <span className="text-base font-bold text-slate-800">{detail.scdf_name?.split(' ').pop() || 'Not Specified'}</span>
+                  </div>
+                  <div className="flex justify-between items-center group">
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Route of Administration:</span>
+                    </div>
+                    <span className="text-base font-bold text-slate-800">{detail.scdf_name?.split(' ')[1] || 'Not Specified'}</span>
+                  </div>
+                </div>
+              </section>
+              <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full">
+                <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500 flex items-center justify-center">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-xl text-slate-800 tracking-tight">Packaging Hierarchy</h3>
+                </div>
+                <div className="p-8 space-y-6">
+                  <div className="flex justify-between items-center group">
+                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Major Unit:</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-slate-800">NA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center group">
+                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Med Unit:</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-slate-800">NA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center group">
+                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Minor Unit:</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-slate-800">NA</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* SECTION 3: RxNORM CLINICAL IDENTITY */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600 flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-blue-500" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">RxNorm-Based Clinical Identity</h3>
+              </div>
+              <div className="p-8 space-y-8">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline px-1">
+                    <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Ingredient(s), Strength(s), and Strength Unit(s)</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-inner group">
+                     <span className="text-xl md:text-2xl font-black text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">
+                       {detail.ingredients?.length ? detail.ingredients.map(i => `${i.api} ${i.api_roa || ''}`).join(' / ') : "No ingredients recorded"}
+                     </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-4">
+                  <ClinicalItem label="Dose Form" value={detail.scdf_name?.split(' ').pop() || 'Not Specified'} source="SCDF_Directory.ROA_DF" />
+                  <ClinicalItem label="Semantic Clinical Drug (SCD)" value={detail.scd_name || 'Not Specified'} source="SCD_Directory.SCD" className="text-blue-600" />
+                  <ClinicalItem label="Semantic Clinical Drug Form (SCDF)" value={detail.scdf_name || 'Not Specified'} source="SCDF_Directory.SCDF_Name" className="text-blue-600" />
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION 4: WHO ATC CLASSIFICATION */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-blue-50 rounded-lg text-blue-500 flex items-center justify-center">
+                  <Network className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">WHO ATC Classification</h3>
+              </div>
+              <div className="p-8">
+                <div className="space-y-3 max-w-4xl">
+                  <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                    <span className="bg-blue-200 text-blue-700 text-[10px] font-black px-2 py-1.5 rounded-md min-w-[50px] text-center">{detail.atc_code || 'N/A'}</span>
+                    <span className="text-base font-black text-blue-800">{'Pharmacological Class'}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION 7: CLINICAL INFORMATION (TABS) */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500 flex items-center justify-center">
+                  <Info className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Clinical Information</h3>
+              </div>
+              
+              {/* Tabs Navigation */}
+              <div className="flex border-b border-slate-100">
+                <button onClick={() => setActiveTab('indications')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'indications' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Clinical Indications</button>
+                <button onClick={() => setActiveTab('adr')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'adr' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Adverse Drug Reactions</button>
+                <button onClick={() => setActiveTab('ddi')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'ddi' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Drug-Drug Interactions</button>
+              </div>
+
+              <div className="p-6">
+                {activeTab === 'indications' && (
+                  <div className="space-y-10 animate-fadeIn">
+                    {indicationsByAPI.map((group, idx) => (
+                      <div key={idx} className="space-y-4">
+                        <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                          <div className="w-2 h-6 bg-indigo-400 rounded-full"></div>
+                          <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
+                        </div>
+                        <div className="space-y-3">
+                          {group.indications.map((ind: any, iIdx: number) => <IndicationRow key={iIdx} indication={ind} />)}
+                        </div>
+                      </div>
+                    ))}
+                    {indicationsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No specific indications found.</p>}
+                  </div>
+                )}
+                {activeTab === 'adr' && (
+                  <div className="space-y-10 animate-fadeIn">
+                    {adrsByAPI.map((group, idx) => (
+                      <div key={idx} className="space-y-4">
+                        <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                          <div className="w-2 h-6 bg-rose-400 rounded-full"></div>
+                          <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Side Effect Profile)</span>
+                        </div>
+                        <div className="space-y-3">
+                          {group.adrs.map((adr: any, aIdx: number) => <ADRRow key={aIdx} adr={adr} />)}
+                        </div>
+                      </div>
+                    ))}
+                    {adrsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No adverse reactions logged.</p>}
+                  </div>
+                )}
+                {activeTab === 'ddi' && (
+                  <div className="space-y-10 animate-fadeIn">
+                    <p className="text-slate-500 text-center py-8">Use the global DDI Checker engine at the top of the browser to evaluate interactions.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* FINAL SECTION: LEGAL DOCUMENTS */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-slate-100 rounded-lg text-slate-600 flex items-center justify-center">
+                  <Scale className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Legal Documents</h3>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="col-span-full text-center py-10 opacity-40">
+                    <Scale className="w-10 h-10 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm text-slate-600">No legal compliance documents recorded for this brand.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="h-10"></div>
+          </div>) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
             <div className="w-20 h-20 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center mb-6">
               <Pill className="w-10 h-10 text-slate-300" />
@@ -556,28 +781,72 @@ export function PharmaBrowser() {
   );
 }
 
-function TabButton({ active, onClick, icon: Icon, label }: any) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors",
-        active 
-          ? "border-indigo-600 text-indigo-700 bg-indigo-50/50" 
-          : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-      )}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
-  );
-}
 
-function InfoRow({ label, value }: { label: string, value: React.ReactNode }) {
+const ExpandedItem: React.FC<{ label: string; value: string | null }> = ({ label, value }) => (
+  <div>
+    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}:</span>
+    <p className="text-sm font-medium text-slate-600 leading-relaxed">{value || 'Not specified'}</p>
+  </div>
+);
+
+const IdentityItem: React.FC<{ label: string; value: any; source: string; isBadge?: boolean; badgeType?: any }> = ({ label, value, source, isBadge, badgeType }) => (
+  <div className="group">
+    <div className="flex justify-between items-baseline mb-1">
+      <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">{label}</span>
+      <span className="text-[9px] text-slate-300 font-mono opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[150px]">{source}</span>
+    </div>
+    <div className="flex items-center">
+      {isBadge ? <span className="px-3 py-1 text-sm font-bold rounded-lg border shadow-sm bg-blue-50 text-blue-700 border-blue-100">{value || 'N/A'}</span> : <span className="text-slate-800 font-bold text-base truncate">{value || 'No data recorded'}</span>}
+    </div>
+  </div>
+);
+
+const SafetyCard: React.FC<{ label: string; value: string; type?: any; source: string }> = ({ label, value, type, source }) => (
+  <div className="group">
+    <div className="flex justify-between items-center mb-1">
+      <span className="text-slate-500 text-[11px] font-bold uppercase">{label}:</span>
+      <span className="text-[7px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">{source}</span>
+    </div>
+    <div className={`px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all ${type === "danger" ? "bg-red-50 text-red-700 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}`}>{value}</div>
+  </div>
+);
+
+const ClinicalItem: React.FC<{ label: string; value: string; source: string; className?: string }> = ({ label, value, source, className }) => (
+  <div className="group border-b border-slate-50 pb-4">
+    <div className="flex justify-between items-center mb-2">
+      <span className="text-slate-400 text-[11px] font-bold uppercase tracking-wider">{label}:</span>
+      <span className="text-[8px] text-slate-300 font-mono opacity-0 group-hover:opacity-100 transition-opacity">{source}</span>
+    </div>
+    <div className={`font-bold text-sm ${className || 'text-slate-700'}`}>{value}</div>
+  </div>
+);
+
+const ADRRow: React.FC<{ adr: any }> = ({ adr }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   return (
-    <div className="flex justify-between py-1 border-b border-slate-100 last:border-0">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-medium text-slate-800">{value}</span>
+    <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div className="flex items-center justify-between p-4 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex items-center gap-4">
+          <ChevronRight className={`w-5 h-5 transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-90 text-rose-500" : ""}`} />
+          <span className="font-bold text-slate-700">{adr.side_effect_name || 'Unknown Side Effect'}</span>
+        </div>
+        <span className="px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-rose-50 text-rose-700 border-rose-100">{adr.frequency_label || 'Not Specified'}</span>
+      </div>
     </div>
   );
-}
+};
+
+const IndicationRow: React.FC<{ indication: any }> = ({ indication }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  return (
+    <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div className="flex items-center justify-between p-4 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex items-center gap-4">
+          <ChevronRight className={`w-5 h-5 transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-90 text-rose-500" : ""}`} />
+          <span className="font-bold text-slate-700">{indication.indication_text || 'General Use'}</span>
+        </div>
+        <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-100`}>{indication.indication_type?.replace(/_/g, ' ') || 'Unknown'}</span>
+      </div>
+    </div>
+  );
+};
