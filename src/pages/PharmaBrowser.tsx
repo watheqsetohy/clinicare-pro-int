@@ -842,61 +842,68 @@ export function PharmaBrowser() {
                   <div className="space-y-4">
                     {/* HAM */}
                     {detail.ham && (
-                      <div className="group">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-gray-500 text-[11px] font-bold uppercase">High Alert Medication (HAM):</span>
-                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">Medication_Master &gt;&gt; SCD_Directory.HAM</span>
+                      <div className="group relative">
+                        <div className="p-4 rounded-xl border flex flex-col gap-1 transition-colors shadow-sm bg-red-50 border-red-200">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-red-900">
+                              High Alert Medication
+                            </span>
+                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                          </div>
+                          <div className="text-xs font-black text-red-700 uppercase tracking-widest">{detail.ham}</div>
                         </div>
-                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-red-50 text-red-700 border-red-200 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-red-600" />
-                          {detail.ham}
-                        </div>
+                        <span className="absolute top-2 right-8 text-[7px] text-red-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Medication_Master &gt;&gt; SCD_Directory.HAM</span>
                       </div>
                     )}
                     
                     {/* LASA */}
                     {detail.lasa && (
-                      <div className="group">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-gray-500 text-[11px] font-bold uppercase">Look-Alike / Sound-Alike (LASA):</span>
-                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">Medication_Master &gt;&gt; SCD_Directory.LASA</span>
-                        </div>
+                      <div className="group relative">
                         <button 
                           onClick={() => setSelectedLasaCode(detail.lasa_code)}
-                          className="w-full px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 flex items-center justify-between text-left group/btn cursor-pointer"
+                          className="w-full p-4 rounded-xl border transition-all shadow-sm bg-yellow-50 hover:bg-yellow-100 border-yellow-200 flex flex-col gap-2 text-left cursor-pointer"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-yellow-900">
+                              Look-Alike / Sound-Alike (LASA)
+                            </span>
                             <Eye className="w-5 h-5 text-yellow-600" />
-                            <div>
-                              <div>{detail.lasa}</div>
-                              <div className="text-[10px] text-yellow-600/80 uppercase font-black tracking-wider mt-0.5">Level: {detail.lasa_level || 'N/A'} • Code: {detail.lasa_code}</div>
-                            </div>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-yellow-400 group-hover/btn:translate-x-1 transition-transform" />
+                          <div className="flex items-center justify-between w-full">
+                             <div>
+                               <div className="text-xs font-black text-yellow-700 uppercase tracking-widest">{detail.lasa}</div>
+                               <div className="text-[10px] text-yellow-600/80 uppercase font-bold tracking-wider mt-0.5">Level: {detail.lasa_level || 'N/A'} • Code: {detail.lasa_code}</div>
+                             </div>
+                             <ChevronRight className="w-5 h-5 text-yellow-500 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                          </div>
                         </button>
+                        <span className="absolute top-2 right-8 text-[7px] text-yellow-500/40 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Medication_Master &gt;&gt; SCD_Directory.LASA</span>
                       </div>
                     )}
                     
                     {/* Hazardous */}
                     {detail.resolved_hazardous && (
-                      <div className="group space-y-2">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-gray-500 text-[11px] font-bold uppercase">Hazardous:</span>
-                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-right leading-tight max-w-[150px]">Mapping Directory.Hazardous</span>
+                      <div className="group relative">
+                        <div className="p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm bg-orange-50 border-orange-200">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-orange-900">
+                              Hazardous Drug
+                            </span>
+                            <Biohazard className="w-5 h-5 text-orange-600" />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 mt-1">
+                             <div className="bg-white/60 rounded-md p-2 border border-orange-100">
+                               <div className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">Concern Level</div>
+                               <div className="text-xs font-black text-orange-800">{detail.resolved_concern_level || 'N/A'}</div>
+                             </div>
+                             <div className="bg-white/60 rounded-md p-2 border border-orange-100">
+                               <div className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">Cytotoxic</div>
+                               <div className="text-xs font-black text-orange-800">{detail.resolved_cytotoxic ? 'YES' : 'NO'}</div>
+                             </div>
+                          </div>
                         </div>
-                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-2">
-                          <Biohazard className="w-5 h-5 text-orange-600" />
-                          YES
-                        </div>
-                        {/* Nested Concerned Level & Cytotoxic */}
-                        <div className="pl-3 border-l-2 border-orange-200 space-y-2 mt-2">
-                           <div className="text-xs font-bold text-orange-800">
-                             Concern Level: <span className="font-normal">{detail.resolved_concern_level || 'N/A'}</span>
-                           </div>
-                           <div className="text-xs font-bold text-orange-800">
-                             Cytotoxic: <span className="font-normal">{detail.resolved_cytotoxic ? 'YES' : 'NO'}</span>
-                           </div>
-                        </div>
+                        <span className="absolute top-2 right-8 text-[7px] text-orange-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Mapping Directory.Hazardous</span>
                       </div>
                     )}
 
@@ -914,34 +921,42 @@ export function PharmaBrowser() {
                   </div>
                   <div className="space-y-4">
                     {/* Legal Status */}
-                    <div className="group">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-500 text-[11px] font-bold uppercase">Legal Status:</span>
-                        <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">SCD_Directory.Legal Status</span>
+                    <div className="group relative">
+                      <div className={`p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm ${detail.resolved_legal_status === 'Prescription' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                        <div className="flex items-center justify-between w-full">
+                          <span className={`text-sm font-bold ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-900' : 'text-emerald-900'}`}>
+                            Legal Status
+                          </span>
+                          <Scale className={`w-5 h-5 ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-600' : 'text-emerald-600'}`} />
+                        </div>
+                        <div className="flex items-center mt-1">
+                          {detail.resolved_legal_status === 'Prescription' ? (
+                            <div className="flex items-center gap-2 text-amber-700">
+                              <span className="font-serif italic font-black text-2xl leading-none pr-2 border-r border-amber-300">Rx</span>
+                              <span className="text-sm font-black uppercase tracking-widest">{detail.resolved_legal_status}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-black uppercase tracking-widest text-emerald-700">{detail.resolved_legal_status || 'Unspecified'}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className={`px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all flex items-center gap-2 ${detail.resolved_legal_status === 'Prescription' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                        {detail.resolved_legal_status === 'Prescription' ? (
-                          <>
-                            <span className="font-serif italic font-black text-amber-800 text-base leading-none pr-1 border-r border-amber-200">Rx</span>
-                            {detail.resolved_legal_status}
-                          </>
-                        ) : (
-                          detail.resolved_legal_status || 'Unspecified'
-                        )}
-                      </div>
+                      <span className={`absolute top-2 right-8 text-[7px] opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-500/40' : 'text-emerald-500/40'}`}>SCD_Directory.Legal Status</span>
                     </div>
 
                     {/* Controlled Substance */}
+                    {/* Controlled Substance */}
                     {detail.resolved_controlled && (
-                      <div className="group">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-gray-500 text-[11px] font-bold uppercase">Controlled Substance:</span>
-                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-right leading-tight max-w-[150px]">ATC Directory.Controlled Substance</span>
+                      <div className="group relative">
+                        <div className="p-4 rounded-xl border flex flex-col gap-1 transition-colors shadow-sm bg-purple-50 border-purple-200">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm font-bold text-purple-900">
+                              Controlled Substance
+                            </span>
+                            <Lock className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div className="text-xs font-black text-purple-700 uppercase tracking-widest">Controlled Narcotics</div>
                         </div>
-                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-2">
-                          <Lock className="w-4 h-4 text-purple-600" />
-                          Controlled Narcotics
-                        </div>
+                        <span className="absolute top-2 right-8 text-[7px] text-purple-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">ATC Directory.Controlled Substance</span>
                       </div>
                     )}
                   </div>
