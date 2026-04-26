@@ -743,6 +743,16 @@ export function PharmaBrowser() {
                       <Biohazard className="w-4 h-4" /> Hazardous
                     </div>
                   )}
+                  {detail.resolved_controlled && (
+                    <div title="Controlled Substance" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold text-xs uppercase tracking-wide">
+                      <Lock className="w-4 h-4" /> Controlled Narcotics
+                    </div>
+                  )}
+                  {detail.psp && (
+                    <div title="Patient Support Program" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-pink-50 text-pink-700 border border-pink-200 font-bold text-xs uppercase tracking-wide">
+                      <Package className="w-4 h-4" /> PSP
+                    </div>
+                  )}
                   {detail.lasa && (
                     <button onClick={() => setSelectedLasaCode(detail.lasa_code)} title="Look Alike / Sound Alike" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold text-xs uppercase tracking-wide hover:bg-yellow-100 transition-colors cursor-pointer">
                       <Eye className="w-4 h-4" /> LASA
@@ -823,7 +833,7 @@ export function PharmaBrowser() {
                       <IdentityItem label="PTC Approval Code" value={"NA"} source="Medication_Master.PTC-Approval ID" />
                       <IdentityItem label="PTC Approval Date" value={"NA"} source="Medication_Master.PTC Approval Date" />
                       <IdentityItem label="PTC Approval Level" value={"NA"} source="Medication_Master.PTC Approval Level" />
-                      <IdentityItem label="PSP" value={'No'} source="Medication_Master.PSP" isBadge={false} badgeType={'default'} />
+                      <IdentityItem label="PSP" value={detail.psp ? 'YES' : 'NO'} source="Medication_Master.PSP" isBadge={false} badgeType={'default'} />
                     </div>
                   </div>
                 </div>
