@@ -230,91 +230,98 @@ export function PharmaBrowser() {
   const ddisByAPI: any[] = [];
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-slate-50">
+    <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
       {/* LEFT PANEL: Search & Results */}
-      <div className="w-[400px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-white z-10">
-        <div className="p-4 border-b border-slate-200 bg-white">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-4">
-            <Beaker className="w-6 h-6 text-indigo-600" />
-            Pharma Directory
+      <div className="w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
+        {/* Title Header */}
+        <div className="px-6 py-5">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            Medication Master
           </h2>
-          
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search medications (min 3 chars)..."
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
-              />
-            </div>
-            
-            <div className="flex gap-2">
-              <select 
-                value={status}
-                onChange={e => { setStatus(e.target.value); setOffset(0); }}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">All Formularies</option>
-                <option value="Formulary">Formulary</option>
-                <option value="Non-Formulary">Non-Formulary</option>
-              </select>
-            </div>
-            {totalResults > 0 && (
-              <div className="text-xs font-semibold text-slate-500 mt-2">
-                Showing {results.length} of {totalResults.toLocaleString()} medications
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {/* Search and Filter */}
+        <div className="px-4 pb-4">
+          <div className="relative group">
+            <Search className="w-5 h-5 absolute left-3 top-2.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <input 
+              className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white transition-all outline-none placeholder:text-slate-500" 
+              placeholder="Search medications..." 
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              type="text"
+            />
+            <button className="absolute right-3 top-2.5 text-slate-400 hover:text-blue-500 transition-colors">
+              <Filter className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="flex gap-2 mt-3">
+            <select 
+              value={status}
+              onChange={e => { setStatus(e.target.value); setOffset(0); }}
+              className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+            >
+              <option value="">All Formularies</option>
+              <option value="Formulary">Formulary</option>
+              <option value="Non-Formulary">Non-Formulary</option>
+            </select>
+          </div>
+          {totalResults > 0 && (
+            <div className="text-[11px] font-semibold text-slate-400 mt-3">
+              Showing {results.length} of {totalResults.toLocaleString()} medications
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 space-y-3 pb-4">
           {loading ? (
-            <div className="p-8 text-center text-slate-400">Searching...</div>
+            <div className="p-8 text-center text-slate-400 text-sm">Searching...</div>
           ) : results.length > 0 ? (
-            results.map((r) => (
+            results.map((r) => {
+              const isActive = selectedBrandId === r.brand_id;
+              return (
               <div 
                 key={r.brand_id} 
                 onClick={() => setSelectedBrandId(r.brand_id)}
                 className={cn(
-                  "p-3 rounded-xl cursor-pointer transition-all border",
-                  selectedBrandId === r.brand_id 
-                    ? "bg-indigo-50 border-indigo-200 shadow-sm" 
-                    : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
+                  "group relative p-4 rounded-xl cursor-pointer transition-all border",
+                  isActive 
+                    ? "bg-blue-50/60 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-0 shadow-sm" 
+                    : "bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 border-transparent"
                 )}
               >
-                <div className="flex gap-3">
-                  <div className="pt-1">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
-                      checked={selectedForDdi.has(r.brand_id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleDdiSelection(r.brand_id);
-                      }}
-                    />
+                {/* Active Selection Indicator */}
+                {isActive && (
+                  <div className="absolute left-0 top-3 bottom-3 w-1.5 bg-blue-500 rounded-r-full"></div>
+                )}
+                
+                <div className={isActive ? 'pl-2' : ''}>
+                  <div className="flex justify-between items-start mb-1.5">
+                    <h3 className={cn("font-bold text-base leading-tight pr-2", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-800 dark:text-slate-100")}>
+                      {r.name_en}
+                    </h3>
+                    
+                    {/* Status Dot */}
+                    <div className="flex items-center justify-center pt-1 shrink-0">
+                      <span className={cn("h-2.5 w-2.5 rounded-full", 
+                        isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-blue-500/80"
+                      )}></span>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="font-semibold text-slate-800 text-sm truncate">{r.name_en}</h4>
-                      <Badge variant={r.formulary_status === 'Formulary' ? 'success' : 'secondary'} className="text-[10px] shrink-0">
-                        {r.formulary_status === 'Formulary' ? 'F' : 'NF'}
-                      </Badge>
-                    </div>
-                    {r.name_ar && <p className="text-xs text-slate-500 truncate" dir="rtl">{r.name_ar}</p>}
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">ATC: {r.atc_code}</span>
-                      {r.scd_legal_status === 'Prescription' && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200">Rx</span>
-                      )}
-                    </div>
+
+                  <p className={cn("text-[10px] font-medium mb-3 uppercase tracking-tight", isActive ? "text-slate-600 dark:text-slate-300" : "text-slate-500 dark:text-slate-400")} dir="rtl">
+                    {r.name_ar || r.scdf_name || r.product_type}
+                  </p>
+
+                  <div className="flex items-center">
+                    <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/40 px-2.5 py-1 rounded-md border border-emerald-100 dark:border-emerald-800/50">
+                      {r.formulary_status}
+                    </span>
                   </div>
                 </div>
               </div>
-            ))
+            )})
           ) : (q || status) ? (
             <div className="p-8 text-center text-slate-500 text-sm">No medications found.</div>
           ) : (
@@ -328,11 +335,19 @@ export function PharmaBrowser() {
             <button 
               onClick={() => setOffset(prev => prev + 50)}
               disabled={loading}
-              className="w-full py-3 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-xl border border-indigo-100 disabled:opacity-50"
+              className="w-full py-3 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors rounded-xl border border-blue-100 disabled:opacity-50 mt-2"
             >
-              {loading ? 'Loading...' : 'Load More Medications'}
+              {loading ? 'Loading...' : 'Load More'}
             </button>
           )}
+        </div>
+
+        {/* Bottom Action Button */}
+        <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 sticky bottom-0 z-10">
+          <button className="w-full bg-[#4F81F1] hover:bg-blue-600 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
+            <span className="material-icons-round text-lg">+</span>
+            Add New Medication
+          </button>
         </div>
       </div>
 
@@ -426,19 +441,19 @@ export function PharmaBrowser() {
             <Activity className="w-8 h-8 text-indigo-300 animate-spin" />
           </div>
         ) : detail ? (
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8 animate-fadeIn relative">
+          <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-black/20 p-6 md:p-8 animate-fadeIn relative">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h2 className="text-2xl md:text-3xl font-bold text-slate-800">
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
                     {detail.name_en}
                   </h2>
-                  <span className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                  <span className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800">
                     {detail.formulary_status}
                   </span>
                 </div>
-                <p className="text-slate-500 text-sm font-arabic tracking-wide" dir="rtl">
+                <p className="text-gray-500 dark:text-gray-400 text-sm font-arabic tracking-wide" dir="rtl">
                   {detail.name_ar}
                 </p>
               </div>
@@ -446,9 +461,9 @@ export function PharmaBrowser() {
                 <button 
                   onClick={handleAskAI} 
                   disabled={loadingAi}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm transition-all active:scale-95"
+                  className="bg-[#4F81F1] hover:bg-blue-600 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm transition-all active:scale-95"
                 >
-                  <Activity className="w-5 h-5" />
+                  <span className="text-lg">✨</span>
                   {loadingAi ? 'Analyzing...' : 'Clinical AI Insight'}
                 </button>
               </div>
