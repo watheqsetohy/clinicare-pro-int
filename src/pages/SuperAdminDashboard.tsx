@@ -200,7 +200,7 @@ export function SuperAdminDashboard() {
 
             {/* ── RxNorm Browser — drug database portal card ── */}
             <button
-              onClick={() => navigate('/pharma')}
+              onClick={() => navigate('/rxnorm')}
               className="bg-gradient-to-br from-emerald-700 to-teal-700 p-8 rounded-xl border border-emerald-400/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center gap-4 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -209,6 +209,20 @@ export function SuperAdminDashboard() {
               <div className="text-center">
                 <span className="font-bold text-sm text-white block">RxNorm Browser</span>
                 <span className="text-[10px] uppercase font-bold text-emerald-200 mt-1 block tracking-wider">Drug Terminology (NLM)</span>
+              </div>
+            </button>
+
+            {/* ── Local Master Directory — custom pharma portal card ── */}
+            <button
+              onClick={() => navigate('/pharma')}
+              className="bg-gradient-to-br from-indigo-700 to-violet-700 p-8 rounded-xl border border-indigo-400/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center gap-4 group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Database className="w-7 h-7 text-indigo-200" />
+              </div>
+              <div className="text-center">
+                <span className="font-bold text-sm text-white block">Local Master Directory</span>
+                <span className="text-[10px] uppercase font-bold text-indigo-200 mt-1 block tracking-wider">Vezeeta & Drugeye Mapped</span>
               </div>
             </button>
 
