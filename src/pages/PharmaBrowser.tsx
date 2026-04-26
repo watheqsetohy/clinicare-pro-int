@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck, Biohazard, Snowflake, Zap } from 'lucide-react';
+import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck, Biohazard, Snowflake, Zap, Sun, Droplets, Syringe, Package } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 function Badge({ children, variant, className }: any) {
@@ -49,6 +49,12 @@ interface BrandDetail {
   lower_temp?: number;
   upper_temp?: number;
   market_shortage: boolean;
+  photosensitive?: boolean;
+  photo_storage?: string;
+  photo_reconstitution?: string;
+  photo_dilution?: string;
+  photo_administration?: string;
+  photo_comments?: string;
   scd_name?: string;
   scdf_name: string;
   atc_code: string;
@@ -90,6 +96,110 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true, h
         </div>
       )}
     </section>
+  );
+}
+
+// ── Photosensitivity Handling Stage Pipeline ──
+function PhotosensitivityPipeline({ detail }: { detail: BrandDetail }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const stages = [
+    { key: 'storage', label: 'Storage', icon: Package, note: detail.photo_storage, color: 'from-amber-400 to-amber-500', ring: 'ring-amber-200', bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
+    { key: 'reconstitution', label: 'Reconstitution', icon: Droplets, note: detail.photo_reconstitution, color: 'from-orange-400 to-orange-500', ring: 'ring-orange-200', bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200' },
+    { key: 'dilution', label: 'Dilution', icon: FlaskConical, note: detail.photo_dilution, color: 'from-rose-400 to-rose-500', ring: 'ring-rose-200', bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-200' },
+    { key: 'administration', label: 'Administration', icon: Syringe, note: detail.photo_administration, color: 'from-red-400 to-red-500', ring: 'ring-red-200', bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200' },
+  ];
+
+  const activeStages = stages.filter(s => s.note && s.note.trim());
+
+  return (
+    <div className="mt-3">
+      {/* Trigger Button */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-4 rounded-xl border-2 border-dashed border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 transition-all flex items-center justify-between group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+            <Sun className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <div className="text-sm font-bold text-amber-900">Photosensitive Medication</div>
+            <div className="text-[10px] text-amber-600 uppercase tracking-wider font-bold">
+              {activeStages.length} of {stages.length} stages documented — Click to view pipeline
+            </div>
+          </div>
+        </div>
+        <ChevronDown className={`w-5 h-5 text-amber-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Expanded Pipeline Visualization */}
+      {expanded && (
+        <div className="mt-4 animate-fadeIn">
+          {/* Pipeline Track */}
+          <div className="relative">
+            {/* Horizontal connector line */}
+            <div className="absolute top-[34px] left-[40px] right-[40px] h-1 bg-gradient-to-r from-amber-200 via-orange-200 via-rose-200 to-red-200 rounded-full z-0" />
+            {/* Animated glow overlay */}
+            <div className="absolute top-[33px] left-[40px] right-[40px] h-1.5 bg-gradient-to-r from-amber-300 via-orange-300 via-rose-300 to-red-300 rounded-full z-0 opacity-50 animate-pulse" />
+
+            {/* Stage Nodes */}
+            <div className="relative z-10 grid grid-cols-4 gap-2">
+              {stages.map((stage) => {
+                const StageIcon = stage.icon;
+                const hasData = stage.note && stage.note.trim();
+                return (
+                  <div key={stage.key} className="flex flex-col items-center">
+                    {/* Node Circle */}
+                    <div className={`w-[68px] h-[68px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 ${
+                      hasData
+                        ? `bg-gradient-to-br ${stage.color} ring-4 ${stage.ring} ring-offset-2`
+                        : 'bg-slate-200 ring-2 ring-slate-100'
+                    }`}>
+                      <StageIcon className={`w-7 h-7 ${hasData ? 'text-white' : 'text-slate-400'}`} />
+                    </div>
+                    {/* Label */}
+                    <span className={`mt-2 text-[10px] font-black uppercase tracking-wider ${hasData ? stage.text : 'text-slate-400'}`}>
+                      {stage.label}
+                    </span>
+                    {/* Status indicator */}
+                    <div className={`mt-1 w-2 h-2 rounded-full ${hasData ? 'bg-green-500 shadow-sm shadow-green-300' : 'bg-slate-300'}`} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stage Detail Cards */}
+          {activeStages.length > 0 && (
+            <div className="mt-6 space-y-3">
+              {activeStages.map((stage) => {
+                const StageIcon = stage.icon;
+                return (
+                  <div key={stage.key} className={`${stage.bg} ${stage.border} border rounded-xl p-4 flex items-start gap-3 transition-all hover:shadow-md`}>
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${stage.color} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <StageIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-black uppercase tracking-wider ${stage.text} mb-1`}>{stage.label}</div>
+                      <p className="text-sm text-slate-700 leading-relaxed">{stage.note}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Additional Comments */}
+          {detail.photo_comments && (
+            <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 italic">
+              <span className="font-bold not-italic text-slate-500 uppercase text-[10px] tracking-wider block mb-1">Additional Notes:</span>
+              {detail.photo_comments}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -548,6 +658,11 @@ export function PharmaBrowser() {
                       <Eye className="w-4 h-4" /> LASA
                     </div>
                   )}
+                  {detail.resolved_light_protection && (
+                    <div title="Protect from Light" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 text-yellow-300 border border-slate-600 font-bold text-xs uppercase tracking-wide">
+                      <Sun className="w-4 h-4" /> Protect from Light
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -757,8 +872,13 @@ export function PharmaBrowser() {
                     {detail.resolved_light_protection && (
                       <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm bg-slate-800 border-slate-900`}>
                         <span className="text-sm font-bold text-white">Protect from Light</span>
-                        <Zap className="w-5 h-5 text-yellow-400" />
+                        <Sun className="w-5 h-5 text-yellow-400" />
                       </div>
+                    )}
+
+                    {/* Photosensitivity Pipeline */}
+                    {detail.photosensitive && (
+                      <PhotosensitivityPipeline detail={detail} />
                     )}
                   </div>
                 </div>
