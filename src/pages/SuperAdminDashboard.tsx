@@ -200,7 +200,7 @@ export function SuperAdminDashboard() {
 
             {/* ── RxNorm Browser — drug database portal card ── */}
             <button
-              onClick={() => navigate('/rxnorm')}
+              onClick={() => navigate('/pharma')}
               className="bg-gradient-to-br from-emerald-700 to-teal-700 p-8 rounded-xl border border-emerald-400/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center gap-4 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
