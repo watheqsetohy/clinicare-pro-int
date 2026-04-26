@@ -114,30 +114,32 @@ function PhotosensitivityPipeline({ detail }: { detail: BrandDetail }) {
 
   return (
     <div className="mt-3">
+    <div className="group relative h-full flex flex-col">
       {/* Trigger Button */}
       <button
         onClick={() => activeStages.length > 0 ? setExpanded(!expanded) : null}
-        className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all shadow-sm group ${
+        className={`w-full p-4 rounded-xl border flex flex-col justify-between transition-all shadow-sm min-h-[108px] h-full ${
           activeStages.length > 0 
             ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 cursor-pointer' 
             : 'bg-slate-800 border-slate-900 cursor-default'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-900/50 flex items-center justify-center shadow-inner border border-slate-700/50">
-            <Sun className="w-5 h-5 text-yellow-400" />
-          </div>
-          <div className="text-left">
-            <div className="text-sm font-bold text-white">Protect from Light</div>
-            {activeStages.length > 0 && (
-               <div className="text-[10px] text-yellow-400/80 uppercase tracking-wider font-bold">
-                 {activeStages.length} of {stages.length} handling stages documented — Click to view
-               </div>
-            )}
-          </div>
+        <div className="flex items-start justify-between w-full">
+          <span className="text-sm font-bold text-white max-w-[140px] leading-tight text-left">
+            Protect from Light
+          </span>
+          <Sun className="w-5 h-5 text-yellow-400 shrink-0" />
         </div>
-        {activeStages.length > 0 && (
-          <ChevronDown className={`w-5 h-5 text-yellow-500 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+        
+        {activeStages.length > 0 ? (
+           <div className="flex items-center justify-between w-full mt-auto pt-2">
+             <div className="text-[10px] text-yellow-400/80 uppercase tracking-wider font-bold text-left">
+               {activeStages.length} of {stages.length} stages — Click to view
+             </div>
+             <ChevronDown className={`w-5 h-5 text-yellow-500 transition-transform duration-300 shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+           </div>
+        ) : (
+           <div className="mt-auto pt-2"></div>
         )}
       </button>
 
@@ -207,6 +209,7 @@ function PhotosensitivityPipeline({ detail }: { detail: BrandDetail }) {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -735,17 +738,17 @@ export function PharmaBrowser() {
                   )}
                   {detail.ham && (
                     <div title="High Alert Medication" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200 font-bold text-xs uppercase tracking-wide">
-                      <AlertTriangle className="w-4 h-4" /> High Alert
+                      <AlertTriangle className="w-4 h-4" /> HAM
                     </div>
                   )}
                   {detail.resolved_hazardous && (
                     <div title="Hazardous Drug" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 border border-orange-200 font-bold text-xs uppercase tracking-wide">
-                      <Biohazard className="w-4 h-4" /> Hazardous
+                      <Biohazard className="w-4 h-4" /> HD
                     </div>
                   )}
                   {detail.resolved_controlled && (
                     <div title="Controlled Substance" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold text-xs uppercase tracking-wide">
-                      <Lock className="w-4 h-4" /> Controlled Narcotics
+                      <Lock className="w-4 h-4" /> CS
                     </div>
                   )}
                   {detail.psp && (
@@ -760,7 +763,7 @@ export function PharmaBrowser() {
                   )}
                   {detail.resolved_light_protection && (
                     <div title="Protect from Light" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 text-yellow-300 border border-slate-600 font-bold text-xs uppercase tracking-wide">
-                      <Sun className="w-4 h-4" /> Protect from Light
+                      <Sun className="w-4 h-4" /> PSD
                     </div>
                   )}
                 </div>
@@ -852,57 +855,52 @@ export function PharmaBrowser() {
                   <div className="space-y-4">
                     {/* HAM */}
                     {detail.ham && (
-                      <div className="group relative">
-                        <div className="p-4 rounded-xl border flex flex-col gap-1 transition-colors shadow-sm bg-red-50 border-red-200">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm font-bold text-red-900">
-                              High Alert Medication
-                            </span>
-                            <AlertTriangle className="w-5 h-5 text-red-600" />
-                          </div>
-                          <div className="text-xs font-black text-red-700 uppercase tracking-widest">{detail.ham}</div>
+                      <div className="group relative h-full">
+                        <div className="p-4 rounded-xl border flex flex-col justify-center items-center gap-2 transition-colors shadow-sm bg-red-50 border-red-200 min-h-[108px] h-full text-center">
+                          <AlertTriangle className="w-8 h-8 text-red-600 mb-1" />
+                          <span className="text-sm font-bold text-red-900 leading-tight">
+                            High Alert Medication
+                          </span>
                         </div>
-                        <span className="absolute top-2 right-8 text-[7px] text-red-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Medication_Master &gt;&gt; SCD_Directory.HAM</span>
                       </div>
                     )}
                     
                     {/* LASA */}
                     {detail.lasa && (
-                      <div className="group relative">
+                      <div className="group relative h-full">
                         <button 
                           onClick={() => setSelectedLasaCode(detail.lasa_code)}
-                          className="w-full p-4 rounded-xl border transition-all shadow-sm bg-yellow-50 hover:bg-yellow-100 border-yellow-200 flex flex-col gap-2 text-left cursor-pointer"
+                          className="w-full p-4 rounded-xl border transition-all shadow-sm bg-yellow-50 hover:bg-yellow-100 border-yellow-200 flex flex-col justify-between gap-3 text-left cursor-pointer min-h-[108px] h-full"
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm font-bold text-yellow-900">
+                          <div className="flex items-start justify-between w-full">
+                            <span className="text-sm font-bold text-yellow-900 max-w-[200px] leading-tight">
                               Look-Alike / Sound-Alike (LASA)
                             </span>
-                            <Eye className="w-5 h-5 text-yellow-600" />
+                            <Eye className="w-5 h-5 text-yellow-600 shrink-0" />
                           </div>
-                          <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center justify-between w-full mt-auto">
                              <div>
                                <div className="text-xs font-black text-yellow-700 uppercase tracking-widest">{detail.lasa}</div>
                                <div className="text-[10px] text-yellow-600/80 uppercase font-bold tracking-wider mt-0.5">Level: {detail.lasa_level || 'N/A'} • Code: {detail.lasa_code}</div>
                              </div>
-                             <ChevronRight className="w-5 h-5 text-yellow-500 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                             <ChevronRight className="w-5 h-5 text-yellow-500 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all shrink-0" />
                           </div>
                         </button>
-                        <span className="absolute top-2 right-8 text-[7px] text-yellow-500/40 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Medication_Master &gt;&gt; SCD_Directory.LASA</span>
                       </div>
                     )}
                     
                     {/* Hazardous */}
                     {detail.resolved_hazardous && (
-                      <div className="group relative">
-                        <div className="p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm bg-orange-50 border-orange-200">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm font-bold text-orange-900">
+                      <div className="group relative h-full">
+                        <div className="p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm bg-orange-50 border-orange-200 min-h-[108px] h-full">
+                          <div className="flex items-start justify-between w-full mb-3">
+                            <span className="text-sm font-bold text-orange-900 max-w-[150px] leading-tight">
                               Hazardous Drug
                             </span>
-                            <Biohazard className="w-5 h-5 text-orange-600" />
+                            <Biohazard className="w-5 h-5 text-orange-600 shrink-0" />
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2 mt-1">
+                          <div className="grid grid-cols-2 gap-2 mt-auto">
                              <div className="bg-white/60 rounded-md p-2 border border-orange-100">
                                <div className="text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">Concern Level</div>
                                <div className="text-xs font-black text-orange-800">{detail.resolved_concern_level || 'N/A'}</div>
@@ -913,7 +911,6 @@ export function PharmaBrowser() {
                              </div>
                           </div>
                         </div>
-                        <span className="absolute top-2 right-8 text-[7px] text-orange-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">Mapping Directory.Hazardous</span>
                       </div>
                     )}
 
@@ -931,15 +928,15 @@ export function PharmaBrowser() {
                   </div>
                   <div className="space-y-4">
                     {/* Legal Status */}
-                    <div className="group relative">
-                      <div className={`p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm ${detail.resolved_legal_status === 'Prescription' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                        <div className="flex items-center justify-between w-full">
-                          <span className={`text-sm font-bold ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-900' : 'text-emerald-900'}`}>
+                    <div className="group relative h-full">
+                      <div className={`p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm min-h-[108px] h-full ${detail.resolved_legal_status === 'Prescription' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                        <div className="flex items-start justify-between w-full">
+                          <span className={`text-sm font-bold max-w-[120px] leading-tight ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-900' : 'text-emerald-900'}`}>
                             Legal Status
                           </span>
-                          <Scale className={`w-5 h-5 ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-600' : 'text-emerald-600'}`} />
+                          <Scale className={`w-5 h-5 shrink-0 ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-600' : 'text-emerald-600'}`} />
                         </div>
-                        <div className="flex items-center mt-1">
+                        <div className="flex items-center mt-auto pt-2">
                           {detail.resolved_legal_status === 'Prescription' ? (
                             <div className="flex items-center gap-2 text-amber-700">
                               <span className="font-serif italic font-black text-2xl leading-none pr-2 border-r border-amber-300">Rx</span>
@@ -950,23 +947,21 @@ export function PharmaBrowser() {
                           )}
                         </div>
                       </div>
-                      <span className={`absolute top-2 right-8 text-[7px] opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none ${detail.resolved_legal_status === 'Prescription' ? 'text-amber-500/40' : 'text-emerald-500/40'}`}>SCD_Directory.Legal Status</span>
                     </div>
 
                     {/* Controlled Substance */}
                     {/* Controlled Substance */}
                     {detail.resolved_controlled && (
-                      <div className="group relative">
-                        <div className="p-4 rounded-xl border flex flex-col gap-1 transition-colors shadow-sm bg-purple-50 border-purple-200">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm font-bold text-purple-900">
+                      <div className="group relative h-full">
+                        <div className="p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm bg-purple-50 border-purple-200 min-h-[108px] h-full">
+                          <div className="flex items-start justify-between w-full">
+                            <span className="text-sm font-bold text-purple-900 max-w-[140px] leading-tight">
                               Controlled Substance
                             </span>
-                            <Lock className="w-5 h-5 text-purple-600" />
+                            <Lock className="w-5 h-5 text-purple-600 shrink-0" />
                           </div>
-                          <div className="text-xs font-black text-purple-700 uppercase tracking-widest">Controlled Narcotics</div>
+                          <div className="text-xs font-black text-purple-700 uppercase tracking-widest mt-auto pt-2">Controlled Narcotics</div>
                         </div>
-                        <span className="absolute top-2 right-8 text-[7px] text-purple-400/50 opacity-0 group-hover:opacity-100 transition-opacity uppercase pointer-events-none">ATC Directory.Controlled Substance</span>
                       </div>
                     )}
                   </div>
@@ -980,28 +975,30 @@ export function PharmaBrowser() {
                   </div>
                   <div className="space-y-4">
                     {/* Refrigerated */}
-                    <div className={`p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm ${detail.refrigerated ? "bg-cyan-50 border-cyan-100" : "bg-slate-50 border-slate-200"}`}>
-                      <div className="flex items-center justify-between w-full">
-                        <span className={`text-sm font-bold ${detail.refrigerated ? "text-cyan-800" : "text-slate-600"}`}>
-                          {detail.refrigerated ? 'Refrigerated' : 'Room Temperature'}
-                        </span>
-                        {detail.refrigerated ? (
-                          <Snowflake className="w-5 h-5 text-cyan-600" />
-                        ) : (
-                          <Thermometer className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                      
-                      {/* Temp Range */}
-                      <div className="flex items-center gap-3 mt-1 pt-2 border-t border-slate-200/60 dark:border-slate-300/20">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase text-slate-400 font-bold">Lower</span>
-                          <span className="text-xs font-black text-slate-700">{detail.lower_temp || (detail.refrigerated ? '2' : '15')}°C</span>
+                    <div className="group relative h-full">
+                      <div className={`p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm min-h-[108px] h-full ${detail.refrigerated ? "bg-cyan-50 border-cyan-100" : "bg-slate-50 border-slate-200"}`}>
+                        <div className="flex items-start justify-between w-full">
+                          <span className={`text-sm font-bold max-w-[120px] leading-tight ${detail.refrigerated ? "text-cyan-800" : "text-slate-600"}`}>
+                            {detail.refrigerated ? 'Refrigerated' : 'Room Temperature'}
+                          </span>
+                          {detail.refrigerated ? (
+                            <Snowflake className="w-5 h-5 text-cyan-600 shrink-0" />
+                          ) : (
+                            <Thermometer className="w-5 h-5 text-slate-400 shrink-0" />
+                          )}
                         </div>
-                        <div className="w-px h-3 bg-slate-300"></div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] uppercase text-slate-400 font-bold">Upper</span>
-                          <span className="text-xs font-black text-slate-700">{detail.upper_temp || (detail.refrigerated ? '8' : '25')}°C</span>
+                        
+                        {/* Temp Range */}
+                        <div className="flex items-center gap-3 mt-auto pt-3 border-t border-slate-200/60 dark:border-slate-300/20">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] uppercase text-slate-400 font-bold">Lower</span>
+                            <span className="text-xs font-black text-slate-700">{detail.lower_temp || (detail.refrigerated ? '2' : '15')}°C</span>
+                          </div>
+                          <div className="w-px h-3 bg-slate-300"></div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] uppercase text-slate-400 font-bold">Upper</span>
+                            <span className="text-xs font-black text-slate-700">{detail.upper_temp || (detail.refrigerated ? '8' : '25')}°C</span>
+                          </div>
                         </div>
                       </div>
                     </div>
