@@ -116,21 +116,29 @@ function PhotosensitivityPipeline({ detail }: { detail: BrandDetail }) {
     <div className="mt-3">
       {/* Trigger Button */}
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 rounded-xl border-2 border-dashed border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 transition-all flex items-center justify-between group"
+        onClick={() => activeStages.length > 0 ? setExpanded(!expanded) : null}
+        className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all shadow-sm group ${
+          activeStages.length > 0 
+            ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 cursor-pointer' 
+            : 'bg-slate-800 border-slate-900 cursor-default'
+        }`}
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
-            <Sun className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-lg bg-slate-900/50 flex items-center justify-center shadow-inner border border-slate-700/50">
+            <Sun className="w-5 h-5 text-yellow-400" />
           </div>
           <div className="text-left">
-            <div className="text-sm font-bold text-amber-900">Photosensitive Medication</div>
-            <div className="text-[10px] text-amber-600 uppercase tracking-wider font-bold">
-              {activeStages.length} of {stages.length} stages documented — Click to view pipeline
-            </div>
+            <div className="text-sm font-bold text-white">Protect from Light</div>
+            {activeStages.length > 0 && (
+               <div className="text-[10px] text-yellow-400/80 uppercase tracking-wider font-bold">
+                 {activeStages.length} of {stages.length} handling stages documented — Click to view
+               </div>
+            )}
           </div>
         </div>
-        <ChevronDown className={`w-5 h-5 text-amber-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+        {activeStages.length > 0 && (
+          <ChevronDown className={`w-5 h-5 text-yellow-500 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+        )}
       </button>
 
       {/* Expanded Pipeline Visualization */}
@@ -638,9 +646,13 @@ export function PharmaBrowser() {
                 </p>
                 {/* ATTACHED ICONS */}
                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                  {detail.refrigerated && (
+                  {detail.refrigerated ? (
                     <div title="Refrigerated" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 font-bold text-xs uppercase tracking-wide">
                       <Snowflake className="w-4 h-4" /> Refrigerated
+                    </div>
+                  ) : (
+                    <div title="Room Temperature" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs uppercase tracking-wide">
+                      <Thermometer className="w-4 h-4" /> Room Temp
                     </div>
                   )}
                   {detail.ham && (
@@ -868,16 +880,8 @@ export function PharmaBrowser() {
                       </div>
                     </div>
 
-                    {/* Light Protection */}
-                    {detail.resolved_light_protection && (
-                      <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm bg-slate-800 border-slate-900`}>
-                        <span className="text-sm font-bold text-white">Protect from Light</span>
-                        <Sun className="w-5 h-5 text-yellow-400" />
-                      </div>
-                    )}
-
-                    {/* Photosensitivity Pipeline */}
-                    {detail.photosensitive && (
+                    {/* Photosensitivity Pipeline (Combines static tag + interactive details) */}
+                    {(detail.resolved_light_protection || detail.photosensitive) && (
                       <PhotosensitivityPipeline detail={detail} />
                     )}
                   </div>
