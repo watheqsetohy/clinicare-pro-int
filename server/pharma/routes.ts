@@ -130,8 +130,26 @@ router.get('/brand/:brandId', async (req: Request, res: Response) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 // 3. BRAND INGREDIENTS — full ingredient list with clinical rules
 // ════════════════════════════════════════════════════════════════════════════
+
+router.get('/lasa/:lasaCode', async (req: Request, res: Response) => {
+  try {
+    const { lasaCode } = req.params;
+    const { rows } = await pool.query(`
+      SELECT brand_id, name_en, name_ar, lasa, lasa_level, scd_name
+      FROM pharma.v_brand_resolved
+      WHERE lasa_code = $1
+      ORDER BY name_en ASC
+    `, [lasaCode]);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('[Pharma API] LASA lookup error:', error);
+    res.status(500).json({ error: 'Failed to fetch LASA group.' });
+  }
+});
 
 router.get('/brand/:brandId/ingredients', async (req: Request, res: Response) => {
   try {
