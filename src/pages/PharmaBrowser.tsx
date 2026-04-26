@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck } from 'lucide-react';
+import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck, Biohazard, Snowflake, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 function Badge({ children, variant, className }: any) {
@@ -36,12 +36,18 @@ interface BrandDetail {
   resolved_legal_status: string;
   resolved_light_protection: boolean;
   resolved_hazardous: boolean;
+  resolved_concern_level?: string;
+  resolved_cytotoxic?: boolean;
+  resolved_controlled?: boolean;
+  ham?: string;
   resolved_renal_adj: boolean;
   resolved_hepatic_adj: boolean;
   resolved_pregnancy_alarm: boolean;
   resolved_older_adult: boolean;
   lasa: boolean;
   refrigerated: boolean;
+  lower_temp?: number;
+  upper_temp?: number;
   market_shortage: boolean;
   scd_name?: string;
   scdf_name: string;
@@ -530,56 +536,145 @@ export function PharmaBrowser() {
             </section>
 
             {/* SECTION 2: SAFETY & HANDLING */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                 <div className="text-blue-500 flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6" />
+                  <ShieldAlert className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Safety & Handling</h3>
+                <h3 className="font-bold text-xl text-slate-800 dark:text-white tracking-tight">Safety & Handling</h3>
               </div>
               <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* 1- Safety */}
                 <div className="space-y-5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1.5 h-6 bg-red-500 rounded-full"></div>
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">1- Safety</h4>
                   </div>
                   <div className="space-y-4">
-                    <SafetyCard label="High Alert Medication (HAM)" value={detail.resolved_hazardous ? 'TRUE' : 'FALSE'} type={detail.resolved_hazardous ? 'danger' : 'success'} source="SCD_Directory.HAM" />
-                    <SafetyCard label="Hazardous" value={detail.resolved_hazardous ? 'YES' : 'No'} type={detail.resolved_hazardous ? 'danger' : 'default'} source="Mapping.Hazardous" />
-                    {detail.resolved_pregnancy_alarm && (
-                       <SafetyCard label="Pregnancy Warning" value={"YES"} type="danger" source="Mapping.Pregnancy" />
+                    {/* HAM */}
+                    {detail.ham && (
+                      <div className="group">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-gray-500 text-[11px] font-bold uppercase">High Alert Medication (HAM):</span>
+                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">Medication_Master &gt;&gt; SCD_Directory.HAM</span>
+                        </div>
+                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-red-50 text-red-700 border-red-200 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-600" />
+                          {detail.ham}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Hazardous */}
+                    {detail.resolved_hazardous && (
+                      <div className="group space-y-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-gray-500 text-[11px] font-bold uppercase">Hazardous:</span>
+                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-right leading-tight max-w-[150px]">Mapping Directory.Hazardous</span>
+                        </div>
+                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-2">
+                          <Biohazard className="w-5 h-5 text-orange-600" />
+                          YES
+                        </div>
+                        {/* Nested Concerned Level & Cytotoxic */}
+                        <div className="pl-3 border-l-2 border-orange-200 space-y-2 mt-2">
+                           <div className="text-xs font-bold text-orange-800">
+                             Concern Level: <span className="font-normal">{detail.resolved_concern_level || 'N/A'}</span>
+                           </div>
+                           <div className="text-xs font-bold text-orange-800">
+                             Cytotoxic: <span className="font-normal">{detail.resolved_cytotoxic ? 'YES' : 'NO'}</span>
+                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!detail.ham && !detail.resolved_hazardous && (
+                       <div className="text-sm text-slate-400 font-medium italic">No specific safety warnings.</div>
                     )}
                   </div>
                 </div>
+
+                {/* 2- Legal Identity */}
                 <div className="space-y-5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1.5 h-6 bg-amber-500 rounded-full"></div>
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">2- Legal Identity</h4>
                   </div>
                   <div className="space-y-4">
-                    <SafetyCard label="Legal Status" value={detail.resolved_legal_status || 'Prescription Drug'} type={detail.resolved_legal_status === 'Prescription' ? 'warning' : 'success'} source="SCD_Directory.Legal Status" />
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">Controlled Substance</span>
-                        <span className="text-sm font-bold text-slate-800">No</span>
+                    {/* Legal Status */}
+                    <div className="group">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-gray-500 text-[11px] font-bold uppercase">Legal Status:</span>
+                        <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase">SCD_Directory.Legal Status</span>
+                      </div>
+                      <div className={`px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all flex items-center gap-2 ${detail.resolved_legal_status === 'Prescription' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        {detail.resolved_legal_status === 'Prescription' ? (
+                          <>
+                            <span className="font-serif italic font-black text-amber-800 text-base leading-none pr-1 border-r border-amber-200">Rx</span>
+                            {detail.resolved_legal_status}
+                          </>
+                        ) : (
+                          detail.resolved_legal_status || 'Unspecified'
+                        )}
                       </div>
                     </div>
+
+                    {/* Controlled Substance */}
+                    {detail.resolved_controlled && (
+                      <div className="group">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-gray-500 text-[11px] font-bold uppercase">Controlled Substance:</span>
+                          <span className="text-[7px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-right leading-tight max-w-[150px]">ATC Directory.Controlled Substance</span>
+                        </div>
+                        <div className="px-3 py-2 rounded-xl border text-sm font-bold shadow-sm transition-all bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-purple-600" />
+                          Controlled Narcotics
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* 3- Storage */}
                 <div className="space-y-5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">3- Storage</h4>
                   </div>
                   <div className="space-y-4">
-                    <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm ${detail.refrigerated ? "bg-emerald-50 border-emerald-100" : "bg-slate-100 border-slate-200"}`}>
-                      <span className={`text-sm font-bold ${detail.refrigerated ? "text-emerald-700" : "text-slate-500"}`}>Refrigerated</span>
-                      <CheckCircle2 className={`w-5 h-5 ${detail.refrigerated ? "text-emerald-500" : "text-slate-400"}`} />
+                    {/* Refrigerated */}
+                    <div className={`p-4 rounded-xl border flex flex-col gap-2 transition-colors shadow-sm ${detail.refrigerated ? "bg-cyan-50 border-cyan-100" : "bg-slate-50 border-slate-200"}`}>
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-sm font-bold ${detail.refrigerated ? "text-cyan-800" : "text-slate-600"}`}>
+                          {detail.refrigerated ? 'Refrigerated' : 'Room Temperature'}
+                        </span>
+                        {detail.refrigerated ? (
+                          <Snowflake className="w-5 h-5 text-cyan-600" />
+                        ) : (
+                          <Thermometer className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                      
+                      {/* Temp Range */}
+                      <div className="flex items-center gap-3 mt-1 pt-2 border-t border-slate-200/60 dark:border-slate-300/20">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase text-slate-400 font-bold">Lower</span>
+                          <span className="text-xs font-black text-slate-700">{detail.lower_temp || (detail.refrigerated ? '2' : '15')}°C</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-300"></div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase text-slate-400 font-bold">Upper</span>
+                          <span className="text-xs font-black text-slate-700">{detail.upper_temp || (detail.refrigerated ? '8' : '25')}°C</span>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Light Protection */}
                     {detail.resolved_light_protection && (
                       <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors shadow-sm bg-slate-800 border-slate-900`}>
                         <span className="text-sm font-bold text-white">Protect from Light</span>
-                        <CheckCircle2 className="w-5 h-5 text-white" />
+                        <Zap className="w-5 h-5 text-yellow-400" />
                       </div>
                     )}
                   </div>

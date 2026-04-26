@@ -578,6 +578,7 @@ export async function initPharmaSchema() {
       b.image_id,
       b.vezeeta_image_url,
       s.scd_name,
+      s.ham,
       -- Legal status: Brand override > SCD > IR clinical rule
       COALESCE(
         b.legal_status_override,
@@ -621,6 +622,7 @@ export async function initPharmaSchema() {
       s.scdf_id,
       sf.scdf_name,
       sf.atc_code,
+      a.controlled AS resolved_controlled,
       sf.product_type,
       s.concentration,
       s.unit AS conc_unit,
@@ -633,6 +635,7 @@ export async function initPharmaSchema() {
     FROM pharma.brand b
     LEFT JOIN pharma.scd s ON s.scd_id = b.scd_id
     LEFT JOIN pharma.scdf sf ON sf.scdf_id = s.scdf_id
+    LEFT JOIN pharma.atc a ON a.atc_code = sf.atc_code
     LEFT JOIN LATERAL (
       SELECT si.api, si.ingredient_route_id
       FROM pharma.scdf_ingredient si
