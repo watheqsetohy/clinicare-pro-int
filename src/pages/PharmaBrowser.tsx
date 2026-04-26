@@ -287,8 +287,27 @@ export function PharmaBrowser() {
   
   const ddisByAPI: any[] = [];
 
+  const [containerHeight, setContainerHeight] = useState('113.636dvh');
+
+  useEffect(() => {
+    const updateHeight = () => {
+      const header = document.querySelector('header');
+      const headerHeight = header ? header.getBoundingClientRect().height : 72;
+      const availableHeight = window.innerHeight - headerHeight;
+      setContainerHeight(`${availableHeight / 0.88}px`);
+    };
+    updateHeight();
+    // Use an observer to catch any delayed header layout changes
+    const timeout = setTimeout(updateHeight, 100);
+    window.addEventListener('resize', updateHeight);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
+
   return (
-    <div style={{ zoom: '88%', height: 'calc(113.63vh - 4.54rem)' }} className="flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200 w-full">
+    <div style={{ zoom: '88%', height: containerHeight }} className="flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200 w-full">
       {/* LEFT PANEL: Search & Results */}
       <div style={{ width: sidebarWidth }} className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
         {/* Title Header */}
