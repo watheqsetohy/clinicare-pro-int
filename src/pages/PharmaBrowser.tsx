@@ -65,6 +65,34 @@ interface DdiResult {
   interactions: any[];
 }
 
+
+function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true, headerBg = "bg-slate-50 dark:bg-slate-900/50", iconBg = "bg-blue-50", iconColor = "text-blue-600" }: any) {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  return (
+    <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden mb-8 transition-all">
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${headerBg}`}
+      >
+        <div className="flex items-center gap-3">
+           <div className={`p-2 rounded-lg flex items-center justify-center ${iconBg} ${iconColor}`}>
+             <Icon className="w-6 h-6" />
+           </div>
+           <h3 className="font-bold text-xl text-slate-800 dark:text-white tracking-tight">{title}</h3>
+        </div>
+        <div className="text-slate-400">
+           <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+      {isOpen && (
+        <div className="animate-fadeIn">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function PharmaBrowser() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
@@ -260,7 +288,7 @@ export function PharmaBrowser() {
   const ddisByAPI: any[] = [];
 
   return (
-    <div style={{ zoom: '80%' }} className="h-[calc(125vh-5rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
+    <div style={{ zoom: '88%' }} className="h-[calc(114vh-5rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
       {/* LEFT PANEL: Search & Results */}
       <div style={{ width: sidebarWidth }} className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
         {/* Title Header */}
@@ -592,14 +620,7 @@ export function PharmaBrowser() {
             </section>
 
             {/* SECTION 2: SAFETY & HANDLING */}
-            <section className="bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden mb-8">
-              <div className="flex items-center gap-3 p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                <div className="text-blue-500 flex items-center justify-center">
-                  <ShieldAlert className="w-6 h-6" />
-                </div>
-                <h3 className="font-bold text-xl text-slate-800 dark:text-white tracking-tight">Safety & Handling</h3>
-              </div>
-              <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <CollapsibleSection title="Safety & Handling" icon={ShieldAlert} iconBg="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-500"><div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 {/* 1- Safety */}
                 <div className="space-y-5">
@@ -735,8 +756,7 @@ export function PharmaBrowser() {
                     )}
                   </div>
                 </div>
-              </div>
-            </section>
+              </div></CollapsibleSection>
 
             {/* SECTION: PTC APPROVALS */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
