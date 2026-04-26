@@ -230,7 +230,7 @@ export function PharmaBrowser() {
   const ddisByAPI: any[] = [];
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
+    <div style={{ zoom: '80%' }} className="h-[calc(125vh-5rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
       {/* LEFT PANEL: Search & Results */}
       <div className="w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
         {/* Title Header */}
