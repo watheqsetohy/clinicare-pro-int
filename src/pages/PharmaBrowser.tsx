@@ -87,6 +87,30 @@ export function PharmaBrowser() {
   const [ddiResult, setDdiResult] = useState<DdiResult | null>(null);
   const [ddiLoading, setDdiLoading] = useState(false);
 
+  // Resize Logic
+  const [sidebarWidth, setSidebarWidth] = useState(384);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = e.clientX / 0.8; // account for 80% zoom
+      if (newWidth >= 250 && newWidth <= 800) {
+        setSidebarWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsResizing(false);
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   // Reset offset when query changes
   useEffect(() => {
     setOffset(0);
@@ -238,7 +262,7 @@ export function PharmaBrowser() {
   return (
     <div style={{ zoom: '80%' }} className="h-[calc(125vh-5rem)] flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200">
       {/* LEFT PANEL: Search & Results */}
-      <div className="w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
+      <div style={{ width: sidebarWidth }} className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 relative z-0 transition-colors shadow-sm">
         {/* Title Header */}
         <div className="px-6 py-5">
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -348,14 +372,23 @@ export function PharmaBrowser() {
           )}
         </div>
 
-        {/* Bottom Action Button */}
-        <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 sticky bottom-0 z-10">
-          <button className="w-full bg-[#4F81F1] hover:bg-blue-600 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
-            <span className="material-icons-round text-lg">+</span>
+        {/* Pagination/Add */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+          <button className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold py-2.5 rounded-xl transition-colors border border-blue-200 border-dashed">
+            <span className="text-xl leading-none">+</span>
             Add New Medication
           </button>
         </div>
       </div>
+
+      {/* RESIZE HANDLE */}
+      <div 
+        onMouseDown={() => setIsResizing(true)}
+        className="w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 z-50 transition-colors shrink-0"
+        style={{
+          boxShadow: isResizing ? '0 0 0 1px #60a5fa' : 'none'
+        }}
+      ></div>
 
       {/* RIGHT PANEL: Details & DDI Checker */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
@@ -459,9 +492,32 @@ export function PharmaBrowser() {
                     {detail.formulary_status}
                   </span>
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm font-arabic tracking-wide" dir="rtl">
+                <p className="text-gray-500 dark:text-gray-400 text-sm font-arabic tracking-wide mb-3" dir="rtl">
                   {detail.name_ar}
                 </p>
+                {/* ATTACHED ICONS */}
+                <div className="flex flex-wrap items-center gap-3 mt-2">
+                  {detail.refrigerated && (
+                    <div title="Refrigerated" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 font-bold text-xs uppercase tracking-wide">
+                      <Snowflake className="w-4 h-4" /> Refrigerated
+                    </div>
+                  )}
+                  {detail.ham && (
+                    <div title="High Alert Medication" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200 font-bold text-xs uppercase tracking-wide">
+                      <AlertTriangle className="w-4 h-4" /> High Alert
+                    </div>
+                  )}
+                  {detail.resolved_hazardous && (
+                    <div title="Hazardous Drug" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 border border-orange-200 font-bold text-xs uppercase tracking-wide">
+                      <Biohazard className="w-4 h-4" /> Hazardous
+                    </div>
+                  )}
+                  {detail.lasa && (
+                    <div title="Look Alike / Sound Alike" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold text-xs uppercase tracking-wide">
+                      <Eye className="w-4 h-4" /> LASA
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button 
