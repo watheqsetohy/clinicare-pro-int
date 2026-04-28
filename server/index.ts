@@ -1732,31 +1732,36 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
     let fdaSections: any[] = [];
 
     try {
-      // Try to find a setid via SCD-level RXCUIs first
+      // RXCUI → spl_rxnorm_map (product_setid) → bridge (zip_setid) → spl_section
+      // Try SCD-level RXCUIs first (exact match)
       const splMapRes = await query(`
-        SELECT setid, COUNT(*) as section_count
+        SELECT b.zip_setid, COUNT(*) as section_count
         FROM pharma.spl_rxnorm_map m
-        JOIN pharma.spl_section s ON s.setid = m.setid
+        JOIN pharma.spl_setid_bridge b ON b.product_setid = m.setid
+        JOIN pharma.spl_section s ON s.setid = b.zip_setid
         WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD')
-        GROUP BY m.setid
+        GROUP BY b.zip_setid
         ORDER BY section_count DESC
         LIMIT 1
       `, [allScdRxcuis]);
 
-      // Fallback: try IN-level RXCUIs
-      if (splMapRes.rows.length === 0 && inRxcuis.length > 0) {
+      if (splMapRes.rows.length > 0) {
+        fdaSplSetid = splMapRes.rows[0].zip_setid;
+      }
+
+      // Fallback: try IN-level RXCUIs (ingredient level)
+      if (!fdaSplSetid && inRxcuis.length > 0) {
         const fallback = await query(`
-          SELECT setid, COUNT(*) as section_count
+          SELECT b.zip_setid, COUNT(*) as section_count
           FROM pharma.spl_rxnorm_map m
-          JOIN pharma.spl_section s ON s.setid = m.setid
-          WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD')
-          GROUP BY m.setid
+          JOIN pharma.spl_setid_bridge b ON b.product_setid = m.setid
+          JOIN pharma.spl_section s ON s.setid = b.zip_setid
+          WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD','IN')
+          GROUP BY b.zip_setid
           ORDER BY section_count DESC
           LIMIT 1
         `, [inRxcuis]);
-        if (fallback.rows.length > 0) fdaSplSetid = fallback.rows[0].setid;
-      } else if (splMapRes.rows.length > 0) {
-        fdaSplSetid = splMapRes.rows[0].setid;
+        if (fallback.rows.length > 0) fdaSplSetid = fallback.rows[0].zip_setid;
       }
 
       if (fdaSplSetid) {
@@ -1772,9 +1777,12 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
         const rootSections: any[] = [];
 
         for (const sec of splSections.rows) {
+          // Clean section titles (remove extra whitespace/newlines)
+          const cleanTitle = (sec.section_title || '').replace(/\s+/g, ' ').trim();
+
           const node = {
             sectionNumber: sec.section_number,
-            title: sec.section_title,
+            title: cleanTitle,
             html: sec.section_html,
             parentLoinc: sec.parent_loinc,
             sortOrder: sec.sort_order,
@@ -1784,7 +1792,6 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
           parentMap.set(sec.section_number, node);
 
           if (sec.parent_loinc) {
-            // Find parent (e.g., §12.1 → parent §12)
             const parent = parentMap.get(sec.parent_loinc);
             if (parent) {
               parent.children.push(node);
