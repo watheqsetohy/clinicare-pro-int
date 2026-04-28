@@ -327,7 +327,7 @@ router.get('/brand/:brandId/ddis', async (req: Request, res: Response) => {
       JOIN pharma.mv_ddi_symmetric m ON m.my_ddinter_id = em.external_id
       LEFT JOIN pharma.ddi d ON d.id = m.ddi_id
       WHERE b.brand_id = $1
-      ORDER BY m.other_drug
+      ORDER BY CASE m.severity WHEN 'Major' THEN 1 WHEN 'Moderate' THEN 2 WHEN 'Minor' THEN 3 ELSE 4 END, m.other_drug
     `, [brandId]);
 
     res.json({ brandId, ddis: rows, count: rows.length });
