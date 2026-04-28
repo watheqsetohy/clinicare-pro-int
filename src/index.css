@@ -10,3 +10,49 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* ═══ SPL Monograph Content Styles ═══ */
+.spl-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.spl-content table th,
+.spl-content table td {
+  border: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.spl-content table thead th,
+.spl-content table thead td {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #334155;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.spl-content table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+.spl-content ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 8px 0;
+}
+.spl-content li {
+  margin: 4px 0;
+}
+.spl-content p {
+  margin: 6px 0;
+}
+.spl-content strong,
+.spl-content b {
+  font-weight: 700;
+  color: #1e293b;
+}
+.spl-content em {
+  font-style: italic;
+}

@@ -734,4 +734,94 @@ router.get('/packaging/sync-history', async (_req: Request, res: Response) => {
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// FDA MONOGRAPH — structured SPL sections (§0 Boxed Warning through §17)
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/brand/:brandId/monograph', async (req: Request, res: Response) => {
+  try {
+    const brandId = parseInt(req.params.brandId);
+    if (!brandId) return res.status(400).json({ error: 'Invalid brandId' });
+
+    // 1. Get the brand's SCD RXCUI (or any linked RXCUI)
+    const brandRow = await pool.query(`
+      SELECT b.brand_name, s.rxcui, s.scd_name
+      FROM pharma.brand b
+      JOIN pharma.brand_scd bs ON bs.brand_id = b.brand_id
+      JOIN pharma.scd s ON s.scd_id = bs.scd_id
+      WHERE b.brand_id = $1
+      LIMIT 1
+    `, [brandId]);
+
+    if (brandRow.rows.length === 0) {
+      return res.json({ monograph: null, message: 'No SCD linked to this brand' });
+    }
+
+    const { rxcui, scd_name, brand_name } = brandRow.rows[0];
+
+    // 2. Find SPL setID via rxnorm mapping
+    const mapRow = await pool.query(`
+      SELECT DISTINCT setid
+      FROM pharma.spl_rxnorm_map
+      WHERE rxcui = $1 AND rxtty IN ('SCD','SBD','PSN')
+      ORDER BY setid
+      LIMIT 1
+    `, [String(rxcui)]);
+
+    if (mapRow.rows.length === 0) {
+      return res.json({ monograph: null, message: 'No FDA SPL found for this RXCUI', rxcui });
+    }
+
+    const setid = mapRow.rows[0].setid;
+
+    // 3. Get all sections for this setID
+    const { rows: sections } = await pool.query(`
+      SELECT section_number, section_title, section_html, parent_loinc, loinc_code, sort_order
+      FROM pharma.spl_section
+      WHERE setid = $1
+      ORDER BY sort_order
+    `, [setid]);
+
+    // 4. Build tree structure
+    const tree: any[] = [];
+    const childMap: Record<string, any[]> = {};
+
+    for (const s of sections) {
+      const node = {
+        number: s.section_number,
+        title: s.section_title,
+        html: s.section_html,
+        loinc: s.loinc_code,
+        isBoxedWarning: s.section_number === '0',
+        children: [] as any[],
+      };
+      if (s.parent_loinc) {
+        if (!childMap[s.parent_loinc]) childMap[s.parent_loinc] = [];
+        childMap[s.parent_loinc].push(node);
+      } else {
+        tree.push(node);
+      }
+    }
+
+    // Attach children to parents
+    for (const parent of tree) {
+      if (childMap[parent.number]) {
+        parent.children = childMap[parent.number];
+      }
+    }
+
+    res.json({
+      brandName: brand_name,
+      scdName: scd_name,
+      rxcui,
+      setid,
+      sectionCount: sections.length,
+      monograph: tree
+    });
+  } catch (error) {
+    console.error('[Pharma API] Monograph error:', error);
+    res.status(500).json({ error: 'Failed to fetch monograph.' });
+  }
+});
+
 export default router;

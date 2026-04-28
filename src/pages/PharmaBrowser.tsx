@@ -407,12 +407,15 @@ export function PharmaBrowser() {
   
   const [selectedLasaCode, setSelectedLasaCode] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState<'indications' | 'adr' | 'ddi'>('indications');
+  const [activeTab, setActiveTab] = useState<'indications' | 'adr' | 'ddi' | 'monograph'>('indications');
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [adrs, setAdrs] = useState<any[]>([]);
   const [indications, setIndications] = useState<any[]>([]);
   const [ddis, setDdis] = useState<any[]>([]);
+  const [monograph, setMonograph] = useState<any>(null);
+  const [monographLoading, setMonographLoading] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [activeIndicationApi, setActiveIndicationApi] = useState<string | null>(null);
   const [activeAdrApi, setActiveAdrApi] = useState<string | null>(null);
   const [activeDdiApi, setActiveDdiApi] = useState<string | null>(null);
@@ -1507,6 +1510,7 @@ export function PharmaBrowser() {
                     <button onClick={() => setActiveTab('indications')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'indications' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Clinical Indications</button>
                     <button onClick={() => setActiveTab('adr')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'adr' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Adverse Drug Reactions</button>
                     <button onClick={() => setActiveTab('ddi')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'ddi' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Drug-Drug Interactions</button>
+                    <button onClick={() => { setActiveTab('monograph'); if (!monograph && detail) { setMonographLoading(true); fetch(`/api/pharma/brand/${detail.brand_id}/monograph`).then(r => r.json()).then(d => { setMonograph(d); setMonographLoading(false); }).catch(() => setMonographLoading(false)); } }} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'monograph' ? 'text-amber-600 border-amber-600 bg-amber-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>📋 FDA Monograph</button>
                   </div>
 
                   <div className="p-6">
@@ -1637,6 +1641,84 @@ export function PharmaBrowser() {
                           </>
                         ) : (
                           <p className="text-slate-500 text-center py-8">No drug interactions logged for this medication's ingredients.</p>
+                        )}
+                      </div>
+                    )}
+                    {activeTab === 'monograph' && (
+                      <div className="animate-fadeIn">
+                        {monographLoading ? (
+                          <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                            <span className="ml-3 text-slate-500">Loading FDA Monograph...</span>
+                          </div>
+                        ) : monograph?.monograph?.length > 0 ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                              <span className="text-xs font-mono text-slate-400">SetID: {monograph.setid}</span>
+                              <span className="text-xs text-slate-400">|</span>
+                              <span className="text-xs font-mono text-slate-400">RxCUI: {monograph.rxcui}</span>
+                              <span className="text-xs text-slate-400">|</span>
+                              <span className="text-xs font-bold text-amber-600">{monograph.sectionCount} sections</span>
+                            </div>
+                            {monograph.monograph.map((section: any) => {
+                              const isExpanded = expandedSections.has(section.number);
+                              const isBoxed = section.isBoxedWarning;
+                              const toggleSection = (num: string) => {
+                                setExpandedSections(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(num)) next.delete(num); else next.add(num);
+                                  return next;
+                                });
+                              };
+                              return (
+                                <div key={section.number} className={`rounded-xl border ${isBoxed ? 'border-red-300 bg-red-50/50' : 'border-slate-200 bg-white'} overflow-hidden transition-all`}>
+                                  <button
+                                    onClick={() => toggleSection(section.number)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-slate-50/80 ${isBoxed ? 'hover:bg-red-100/50' : ''}`}
+                                  >
+                                    <span className={`text-xs font-mono font-black w-8 text-center rounded-md py-0.5 ${isBoxed ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                      {isBoxed ? '⚠' : `§${section.number}`}
+                                    </span>
+                                    <span className={`flex-1 text-sm font-bold ${isBoxed ? 'text-red-700' : 'text-slate-700'}`}>
+                                      {isBoxed ? '⚠ BOXED WARNING (BLACK BOX)' : section.title}
+                                    </span>
+                                    <svg className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                  </button>
+                                  {isExpanded && (
+                                    <div className={`px-5 pb-4 ${isBoxed ? 'border-t-2 border-red-400 bg-red-50' : 'border-t border-slate-100'}`}>
+                                      <div className="spl-content prose prose-sm max-w-none mt-3" style={{fontSize:'13px',lineHeight:'1.7'}} dangerouslySetInnerHTML={{ __html: section.html }} />
+                                      {section.children?.length > 0 && (
+                                        <div className="mt-3 ml-4 space-y-1 border-l-2 border-slate-200 pl-3">
+                                          {section.children.map((child: any) => {
+                                            const childExpanded = expandedSections.has(child.number);
+                                            return (
+                                              <div key={child.number} className="rounded-lg border border-slate-100 bg-slate-50/50 overflow-hidden">
+                                                <button onClick={() => toggleSection(child.number)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-100/80 transition-all">
+                                                  <span className="text-[10px] font-mono font-bold text-slate-400 w-7">{child.number}</span>
+                                                  <span className="flex-1 text-xs font-bold text-slate-600">{child.title}</span>
+                                                  <svg className={`w-3 h-3 text-slate-400 transition-transform ${childExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                                </button>
+                                                {childExpanded && (
+                                                  <div className="px-4 pb-3 border-t border-slate-100">
+                                                    <div className="spl-content prose prose-sm max-w-none mt-2" style={{fontSize:'12px',lineHeight:'1.6'}} dangerouslySetInnerHTML={{ __html: child.html }} />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-10">
+                            <p className="text-slate-500 text-sm">{monograph?.message || 'No FDA monograph found for this medication.'}</p>
+                            {monograph?.rxcui && <p className="text-xs text-slate-400 mt-1">RxCUI: {monograph.rxcui}</p>}
+                          </div>
                         )}
                       </div>
                     )}
