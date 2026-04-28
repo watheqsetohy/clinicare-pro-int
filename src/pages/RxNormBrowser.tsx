@@ -6,7 +6,6 @@ import {
   ArrowRight, CheckCircle2, Info, BookOpen, List, Heart, Shield, Package, FileText, Dna
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
-import { FdaMonographView } from '../components/FdaMonographView';
 
 // ─── TTY Metadata ─────────────────────────────────────────────────────────
 const TTY_META: Record<string, { label: string; color: string; bg: string; description: string }> = {
@@ -421,7 +420,10 @@ export function RxNormBrowser({
                         {concept.relations.length}
                       </span>
                     )}
-                    {(tab.id === 'monograph' || tab.id === 'cdss') && monograph && (monograph.adverse?.length > 0 || monograph.dosing?.length > 0 || monograph.pk?.length > 0 || monograph.indications?.length > 0 || monograph.contraindications?.length > 0) && (
+                    {tab.id === 'monograph' && monograph?.fdaSections?.length > 0 && (
+                      <span className="ml-1 w-2 h-2 rounded-full bg-blue-500"></span>
+                    )}
+                    {tab.id === 'cdss' && monograph && (monograph.indications?.length > 0 || monograph.contraindications?.length > 0 || monograph.medrtDDI?.length > 0 || monograph.pgxInteractions?.length > 0) && (
                       <span className="ml-1 w-2 h-2 rounded-full bg-emerald-500"></span>
                     )}
                   </button>
