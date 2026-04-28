@@ -1811,22 +1811,50 @@ const DDIRow: React.FC<{ ddi: any; onAtcClick: (atcCode: string) => void }> = ({
   );
 };
 
+const FREQ_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'very common': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+  'common': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  'uncommon': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  'rare': { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+  'very rare': { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
+  'frequent': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  'infrequent': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  'postmarketing': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+};
+
+function getFreqStyle(freq: string) {
+  const normalized = (freq || '').toLowerCase().replace(/\s*\|.*/, '').trim();
+  return FREQ_COLORS[normalized] || { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' };
+}
+
 const ADRRow: React.FC<{ adr: any }> = ({ adr }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const freqStyle = getFreqStyle(adr.frequency_label);
+  const displayName = adr.snomed_term || adr.side_effect_name || 'Unknown Side Effect';
+
   return (
     <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden transition-all duration-300 hover:shadow-md">
       <div className="flex items-center justify-between p-4 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center gap-4">
           <ChevronRight className={`w-5 h-5 transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-90 text-rose-500" : ""}`} />
-          <span className="font-bold text-slate-700">{adr.side_effect_name || 'Unknown Side Effect'}</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-700">{displayName}</span>
+            {adr.snomed_code && (
+              <span className="text-[10px] text-slate-400 font-mono mt-0.5">SNOMED CT: {adr.snomed_code}</span>
+            )}
+          </div>
         </div>
-        <span className="px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-rose-50 text-rose-700 border-rose-100">{adr.frequency_label || 'Not Specified'}</span>
+        <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm whitespace-nowrap ${freqStyle.bg} ${freqStyle.text} ${freqStyle.border}`}>
+          {adr.frequency_label || 'Frequency not known'}
+        </span>
       </div>
       {isExpanded && (
         <div className="p-4 pt-0 border-t border-slate-100 bg-white">
           <div className="grid grid-cols-2 gap-4 mt-3">
-            <ExpandedItem label="Frequency – lower bound" value={adr.freq_lower !== null && adr.freq_lower !== undefined ? `${adr.freq_lower}` : null} />
-            <ExpandedItem label="Frequency – upper bound" value={adr.freq_upper !== null && adr.freq_upper !== undefined ? `${adr.freq_upper}` : null} />
+            <ExpandedItem label="MedDRA Term" value={adr.side_effect_name} />
+            <ExpandedItem label="UMLS CUI" value={adr.umls_cui} />
+            <ExpandedItem label="SNOMED CT Code" value={adr.snomed_code} />
+            <ExpandedItem label="Frequency" value={adr.frequency_label} />
           </div>
         </div>
       )}

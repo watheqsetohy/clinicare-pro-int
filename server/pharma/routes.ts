@@ -231,16 +231,15 @@ router.get('/brand/:brandId/ingredients', async (req: Request, res: Response) =>
 router.get('/brand/:brandId/adrs', async (req: Request, res: Response) => {
   try {
     const { brandId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
     const { rows } = await pool.query(`
-      SELECT DISTINCT ON (a.side_effect_name)
+      SELECT DISTINCT ON (a.umls_cui)
         a.adr_id,
         a.side_effect_name,
         a.frequency_label,
-        a.freq_lower,
-        a.freq_upper,
         a.umls_cui,
+        a.snomed_code,
+        a.snomed_term,
         si.api AS source_ingredient
       FROM pharma.brand b
       JOIN pharma.scd s ON s.scd_id = b.scd_id
@@ -250,9 +249,8 @@ router.get('/brand/:brandId/adrs', async (req: Request, res: Response) => {
         AND em.source ILIKE 'sider'
       JOIN pharma.adr a ON a.stitch_cid = em.external_id
       WHERE b.brand_id = $1
-      ORDER BY a.side_effect_name, a.frequency_label DESC NULLS LAST
-      LIMIT $2
-    `, [brandId, limit]);
+      ORDER BY a.umls_cui, a.frequency_label DESC NULLS LAST
+    `, [brandId]);
 
     res.json({ brandId, adrs: rows, count: rows.length });
   } catch (error) {
