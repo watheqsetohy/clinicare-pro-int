@@ -299,6 +299,76 @@ router.get('/brand/:brandId/indications', async (req: Request, res: Response) =>
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// 5.5 BRAND DDIs — Drug-Drug Interactions through ingredient → DDInter
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/brand/:brandId/ddis', async (req: Request, res: Response) => {
+  try {
+    const { brandId } = req.params;
+
+    const { rows } = await pool.query(`
+      SELECT 
+        m.ddi_id,
+        m.my_ddinter_id,
+        m.my_drug,
+        m.other_ddinter_id,
+        m.other_drug,
+        m.severity,
+        m.mode,
+        m.interaction_text,
+        m.management_text,
+        CASE WHEN m.my_ddinter_id = d.ddinter_id_a THEN d.atc_alt_a ELSE d.atc_alt_b END AS my_atc_alt,
+        CASE WHEN m.other_ddinter_id = d.ddinter_id_a THEN d.atc_alt_a ELSE d.atc_alt_b END AS other_atc_alt,
+        si.api AS source_ingredient
+      FROM pharma.brand b
+      JOIN pharma.scd s ON s.scd_id = b.scd_id
+      JOIN pharma.scdf_ingredient si ON si.scdf_id = s.scdf_id
+      JOIN pharma.ir_external_map em
+        ON em.ingredient_route_id = si.ingredient_route_id
+        AND em.source ILIKE 'ddinter'
+      JOIN pharma.mv_ddi_symmetric m ON m.my_ddinter_id = em.external_id
+      LEFT JOIN pharma.ddi d ON d.id = m.ddi_id
+      WHERE b.brand_id = $1
+      ORDER BY m.other_drug
+    `, [brandId]);
+
+    res.json({ brandId, ddis: rows, count: rows.length });
+  } catch (error) {
+    console.error('[Pharma API] Brand DDIs error:', error);
+    res.status(500).json({ error: 'Failed to fetch brand DDIs.' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// 5.6 ATC ALTERNATIVES
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/atc/:atcCode', async (req: Request, res: Response) => {
+  try {
+    const { atcCode } = req.params;
+    const { rows } = await pool.query(`
+      SELECT DISTINCT ON (b.brand_id)
+        b.brand_id,
+        b.name_en,
+        b.name_ar,
+        b.formulary_status,
+        s.scd_name
+      FROM pharma.brand b
+      JOIN pharma.scd s ON s.scd_id = b.scd_id
+      JOIN pharma.scdf f ON f.scdf_id = s.scdf_id
+      WHERE f.atc_code LIKE $1 || '%'
+      ORDER BY b.brand_id, b.name_en ASC
+      LIMIT 100
+    `, [atcCode]);
+
+    res.json({ atcCode, alternatives: rows });
+  } catch (error) {
+    console.error('[Pharma API] ATC alternatives error:', error);
+    res.status(500).json({ error: 'Failed to fetch ATC alternatives.' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // 6. DDI CHECKER — multi-drug pairwise interaction scan
 // ════════════════════════════════════════════════════════════════════════════
 

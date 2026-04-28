@@ -322,6 +322,77 @@ function LasaDetailsDrawer({ lasaCode, onClose }: { lasaCode: string | null; onC
   );
 }
 
+function AtcAlternativesDrawer({ atcCode, onClose }: { atcCode: string | null; onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!atcCode) return;
+    setLoading(true);
+    fetch(`/api/pharma/atc/${encodeURIComponent(atcCode)}`)
+      .then(res => res.json())
+      .then(d => {
+        setData(d.alternatives || []);
+        setLoading(false);
+      })
+      .catch(e => {
+        console.error(e);
+        setLoading(false);
+      });
+  }, [atcCode]);
+
+  if (!atcCode) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200]" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-white shadow-2xl z-[201] flex flex-col transform transition-transform duration-300 animate-in slide-in-from-right">
+        <div className="p-6 border-b flex items-start justify-between bg-blue-50 border-blue-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-blue-200 flex items-center justify-center">
+                <Network className="w-5 h-5 text-blue-700" />
+              </div>
+              <h2 className="text-xl font-black text-blue-900">ATC Alternatives</h2>
+            </div>
+            <p className="text-sm text-blue-700/80 font-medium">Medications with ATC code {atcCode}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-blue-100 rounded-full transition-colors text-blue-700">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Activity className="w-6 h-6 text-blue-300 animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.map((item, idx) => (
+                <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex flex-col gap-1">
+                  <div className="flex items-start justify-between">
+                    <div className="font-bold text-slate-800">{item.name_en}</div>
+                    {item.formulary_status && (
+                      <div className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 text-[10px] font-black text-blue-600 uppercase tracking-wider">{item.formulary_status}</div>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500 font-medium">{item.scd_name}</div>
+                  <div className="text-xs text-slate-400 font-arabic mt-1" dir="rtl">{item.name_ar}</div>
+                </div>
+              ))}
+              {data.length === 0 && !loading && (
+                <div className="text-center py-10 text-slate-500 font-medium text-sm">
+                  No alternatives found for this ATC code.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function PharmaBrowser() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
@@ -341,8 +412,12 @@ export function PharmaBrowser() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [adrs, setAdrs] = useState<any[]>([]);
   const [indications, setIndications] = useState<any[]>([]);
+  const [ddis, setDdis] = useState<any[]>([]);
   const [activeIndicationApi, setActiveIndicationApi] = useState<string | null>(null);
   const [activeAdrApi, setActiveAdrApi] = useState<string | null>(null);
+  const [activeDdiApi, setActiveDdiApi] = useState<string | null>(null);
+  
+  const [selectedAtcAlt, setSelectedAtcAlt] = useState<string | null>(null);
   const [packaging, setPackaging] = useState<{
     resolved: any;
     local: any;
@@ -427,6 +502,7 @@ export function PharmaBrowser() {
       setDetail(null);
       setAdrs([]);
       setIndications([]);
+      setDdis([]);
       setPackaging(null);
       return;
     }
@@ -463,6 +539,19 @@ export function PharmaBrowser() {
             setActiveIndicationApi(firstIndApi);
           } else {
             setActiveIndicationApi(null);
+          }
+        }
+        
+        // Fetch DDIs
+        const ddiRes = await fetch(`/api/pharma/brand/${selectedBrandId}/ddis`);
+        if (ddiRes.ok) {
+          const ddiData = await ddiRes.json();
+          setDdis(ddiData.ddis || []);
+          if (ddiData.ddis?.length > 0) {
+            const firstDdiApi = ddiData.ddis[0].source_ingredient || 'Unknown';
+            setActiveDdiApi(firstDdiApi);
+          } else {
+            setActiveDdiApi(null);
           }
         }
 
@@ -555,7 +644,14 @@ export function PharmaBrowser() {
     }, {} as Record<string, any[]>)
   ).map(([api, adrsList]) => ({ api, adrs: adrsList as any[] }));
   
-  const ddisByAPI: any[] = [];
+  const ddisByAPI = Object.entries(
+    ddis.reduce((acc, ddi) => {
+      const api = ddi.source_ingredient || 'Unknown';
+      if (!acc[api]) acc[api] = [];
+      acc[api].push(ddi);
+      return acc;
+    }, {} as Record<string, any[]>)
+  ).map(([api, ddisList]) => ({ api, ddis: ddisList as any[] }));
 
   return (
     <div style={{ zoom: '88%', height: 'calc(100% / 0.88)' }} className="flex overflow-hidden bg-gray-50/50 dark:bg-black/20 transition-colors duration-200 w-full">
@@ -1501,8 +1597,47 @@ export function PharmaBrowser() {
                       </div>
                     )}
                     {activeTab === 'ddi' && (
-                      <div className="space-y-10 animate-fadeIn">
-                        <p className="text-slate-500 text-center py-8">Use the global DDI Checker engine at the top of the browser to evaluate interactions.</p>
+                      <div className="animate-fadeIn">
+                        {ddisByAPI.length > 0 ? (
+                          <>
+                            {/* Sub-tabs for DDI APIs */}
+                            {ddisByAPI.length > 1 && (
+                              <div className="flex gap-2 mb-6 border-b border-slate-100 pb-4 overflow-x-auto">
+                                {ddisByAPI.map((group, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setActiveDdiApi(group.api)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                                      activeDdiApi === group.api
+                                        ? 'bg-purple-600 text-white shadow-sm'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    {group.api}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="space-y-4">
+                              {ddisByAPI.filter(g => g.api === activeDdiApi || (ddisByAPI.length === 1)).map((group, idx) => (
+                                <div key={idx} className="space-y-4 animate-fadeIn">
+                                  <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                                    <div className="w-2 h-6 bg-purple-400 rounded-full"></div>
+                                    <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                                    <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
+                                  </div>
+                                  <div className="text-xs font-semibold text-slate-500 mb-2">Showing {group.ddis.length} interaction(s) found</div>
+                                  <div className="space-y-3">
+                                    {group.ddis.map((ddi: any, dIdx: number) => <DDIRow key={dIdx} ddi={ddi} onAtcClick={(code) => setSelectedAtcAlt(code)} />)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-slate-500 text-center py-8">No drug interactions logged for this medication's ingredients.</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1553,6 +1688,7 @@ export function PharmaBrowser() {
         )}
       </div>
       {/* Modals and Drawers */}
+      <AtcAlternativesDrawer atcCode={selectedAtcAlt} onClose={() => setSelectedAtcAlt(null)} />
       <LasaDetailsDrawer lasaCode={selectedLasaCode} onClose={() => setSelectedLasaCode(null)} />
     </div>
   );
@@ -1597,6 +1733,83 @@ const ClinicalItem: React.FC<{ label: string; value: string; source: string; cla
     <div className={`font-bold text-sm ${className || 'text-slate-700'}`}>{value}</div>
   </div>
 );
+
+const MODE_COLORS: Record<string, string> = {
+  'Synergy': 'bg-[#c3794d]',
+  'Antagonism': 'bg-[#62649b]',
+  'Others': 'bg-[#f3d389]',
+  'Metabolism': 'bg-[#438fa5]',
+  'Absorption': 'bg-[#669375]',
+  'Excretion': 'bg-[#8d988f]',
+  'Distribution': 'bg-[#b76067]',
+  'Unknown': 'bg-[#b3aa93]',
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  'Major': 'bg-[#9c4b6a]',
+  'Moderate': 'bg-[#d9c97d]',
+  'Minor': 'bg-[#8aa68f]',
+  'Unknown': 'bg-[#b5b2b2]',
+};
+
+const DDIRow: React.FC<{ ddi: any; onAtcClick: (atcCode: string) => void }> = ({ ddi, onAtcClick }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const sevColor = SEVERITY_COLORS[ddi.severity] || SEVERITY_COLORS['Unknown'];
+  const modColor = MODE_COLORS[ddi.mode] || MODE_COLORS['Unknown'];
+
+  return (
+    <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div className="flex items-center justify-between p-4 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex items-center gap-4">
+          <ChevronRight className={`w-5 h-5 transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-90 text-rose-500" : ""}`} />
+          <span className="font-bold text-slate-700">
+            {ddi.other_drug} <span className="text-rose-500 font-black px-1">⇔</span> {ddi.my_drug}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg shadow-sm text-white flex items-center ${sevColor}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-white/50 mr-1.5 shrink-0"></span>
+            {ddi.severity}
+          </span>
+          <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg shadow-sm text-white ${modColor}`}>
+            {ddi.mode}
+          </span>
+        </div>
+      </div>
+      {isExpanded && (
+        <div className="p-4 pt-0 border-t border-slate-100 bg-white">
+          <div className="space-y-4 mt-3">
+            {ddi.interaction_text && (
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Interaction</div>
+                <p className="text-sm text-slate-700 leading-relaxed">{ddi.interaction_text}</p>
+              </div>
+            )}
+            {ddi.management_text && (
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Management</div>
+                <p className="text-sm text-slate-700 leading-relaxed">{ddi.management_text}</p>
+              </div>
+            )}
+            <div className="pt-2 flex flex-wrap gap-3">
+              {ddi.other_atc_alt && (
+                <button onClick={(e) => { e.stopPropagation(); onAtcClick(ddi.other_atc_alt); }} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-100 font-bold shadow-sm hover:bg-indigo-100 transition-colors">
+                  {ddi.other_drug} ATC Alternative
+                </button>
+              )}
+              {ddi.my_atc_alt && (
+                <button onClick={(e) => { e.stopPropagation(); onAtcClick(ddi.my_atc_alt); }} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-100 font-bold shadow-sm hover:bg-indigo-100 transition-colors">
+                  {ddi.my_drug} ATC Alternative
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ADRRow: React.FC<{ adr: any }> = ({ adr }) => {
   const [isExpanded, setIsExpanded] = useState(false);
