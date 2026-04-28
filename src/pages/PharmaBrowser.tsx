@@ -341,6 +341,8 @@ export function PharmaBrowser() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [adrs, setAdrs] = useState<any[]>([]);
   const [indications, setIndications] = useState<any[]>([]);
+  const [activeIndicationApi, setActiveIndicationApi] = useState<string | null>(null);
+  const [activeAdrApi, setActiveAdrApi] = useState<string | null>(null);
   const [packaging, setPackaging] = useState<{
     resolved: any;
     local: any;
@@ -443,6 +445,12 @@ export function PharmaBrowser() {
         if (adrRes.ok) {
           const adrData = await adrRes.json();
           setAdrs(adrData.adrs || []);
+          if (adrData.adrs?.length > 0) {
+            const firstAdrApi = adrData.adrs[0].source_ingredient || 'Unknown';
+            setActiveAdrApi(firstAdrApi);
+          } else {
+            setActiveAdrApi(null);
+          }
         }
 
         // Fetch Indications
@@ -450,6 +458,12 @@ export function PharmaBrowser() {
         if (indRes.ok) {
           const indData = await indRes.json();
           setIndications(indData.indications || []);
+          if (indData.indications?.length > 0) {
+            const firstIndApi = indData.indications[0].source_ingredient || 'Unknown';
+            setActiveIndicationApi(firstIndApi);
+          } else {
+            setActiveIndicationApi(null);
+          }
         }
 
         // Fetch Packaging (dual source)
@@ -913,7 +927,7 @@ export function PharmaBrowser() {
               </div>
               <div className="p-6">
                 {detail.ptc_approvals && detail.ptc_approvals.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {detail.ptc_approvals.map((ptc, idx) => (
                       <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-100 rounded-bl-3xl -mr-2 -mt-2 flex items-center justify-center z-0">
@@ -924,7 +938,7 @@ export function PharmaBrowser() {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Hospital / PTC Body</span>
                             <span className="text-sm font-bold text-slate-800">{ptc.hospital_name || 'Unknown'}</span>
                           </div>
-                          <div className="flex items-center gap-6 pt-2 border-t border-slate-200/60">
+                          <div className="flex items-center gap-6 pt-2 border-t border-slate-200/60 flex-wrap">
                              <div>
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Code</span>
                                 <span className="text-xs font-semibold text-slate-600">{ptc.ptc_code || 'N/A'}</span>
@@ -937,6 +951,12 @@ export function PharmaBrowser() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Level</span>
                                 <span className="text-xs font-semibold text-slate-600">{ptc.ptc_level || 'N/A'}</span>
                              </div>
+                             {ptc.requester && (
+                               <div>
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Requester</span>
+                                  <span className="text-xs font-semibold text-slate-600">{ptc.requester}</span>
+                               </div>
+                             )}
                           </div>
                         </div>
                       </div>
@@ -1133,21 +1153,7 @@ export function PharmaBrowser() {
                 </div>
               </div></CollapsibleSection>
 
-            {/* SECTION: PTC APPROVALS */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
-                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-500 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <h3 className="font-bold text-xl text-slate-800 tracking-tight">PTC Approvals</h3>
-              </div>
-              <div className="p-6 space-y-3">
-                <div className="text-center py-10 opacity-40">
-                  <ClipboardCheck className="w-10 h-10 mb-2 mx-auto text-slate-400" />
-                  <p className="text-sm text-slate-600">No hospital-specific PTC approvals documented for this brand.</p>
-                </div>
-              </div>
-            </section>
+
 
             {/* SECTION SIDE-BY-SIDE: DOSAGE & PACKAGING */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -1340,7 +1346,6 @@ export function PharmaBrowser() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
                     <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l1_code || 'N/A'}</span>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Anatomical Main Group (Level 1)</span>
                       <span className="text-sm font-bold text-slate-800">{detail.l1_name || 'Not Specified'}</span>
                     </div>
                   </div>
@@ -1348,7 +1353,6 @@ export function PharmaBrowser() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-4">
                     <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l2_code || 'N/A'}</span>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Therapeutic Main Group (Level 2)</span>
                       <span className="text-sm font-bold text-slate-800">{detail.l2_name || 'Not Specified'}</span>
                     </div>
                   </div>
@@ -1356,7 +1360,6 @@ export function PharmaBrowser() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-8">
                     <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l3_code || 'N/A'}</span>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pharmacological Subgroup (Level 3)</span>
                       <span className="text-sm font-bold text-slate-800">{detail.l3_name || 'Not Specified'}</span>
                     </div>
                   </div>
@@ -1364,7 +1367,6 @@ export function PharmaBrowser() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-12">
                     <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l4_code || 'N/A'}</span>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chemical/Therapeutic Subgroup (Level 4)</span>
                       <span className="text-sm font-bold text-slate-800">{detail.l4_name || 'Not Specified'}</span>
                     </div>
                   </div>
@@ -1372,7 +1374,6 @@ export function PharmaBrowser() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm ml-0 sm:ml-16">
                     <span className="bg-blue-600 text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[70px] text-center shadow-inner">{detail.atc_code || 'N/A'}</span>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Chemical Substance (Level 5)</span>
                       <span className="text-base font-black text-blue-900">{detail.l5_name || detail.name_en}</span>
                     </div>
                   </div>
@@ -1414,37 +1415,89 @@ export function PharmaBrowser() {
 
                   <div className="p-6">
                     {activeTab === 'indications' && (
-                      <div className="space-y-10 animate-fadeIn">
-                        {indicationsByAPI.map((group, idx) => (
-                          <div key={idx} className="space-y-4">
-                            <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                              <div className="w-2 h-6 bg-indigo-400 rounded-full"></div>
-                              <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
-                              <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
+                      <div className="animate-fadeIn">
+                        {indicationsByAPI.length > 0 ? (
+                          <>
+                            {/* Sub-tabs for Indications APIs */}
+                            {indicationsByAPI.length > 1 && (
+                              <div className="flex gap-2 mb-6 border-b border-slate-100 pb-4 overflow-x-auto">
+                                {indicationsByAPI.map((group, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setActiveIndicationApi(group.api)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                                      activeIndicationApi === group.api
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    {group.api}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="space-y-4">
+                              {indicationsByAPI.filter(g => g.api === activeIndicationApi || (indicationsByAPI.length === 1)).map((group, idx) => (
+                                <div key={idx} className="space-y-4 animate-fadeIn">
+                                  <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                                    <div className="w-2 h-6 bg-indigo-400 rounded-full"></div>
+                                    <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                                    <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {group.indications.map((ind: any, iIdx: number) => <IndicationRow key={iIdx} indication={ind} />)}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="space-y-3">
-                              {group.indications.map((ind: any, iIdx: number) => <IndicationRow key={iIdx} indication={ind} />)}
-                            </div>
-                          </div>
-                        ))}
-                        {indicationsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No specific indications found.</p>}
+                          </>
+                        ) : (
+                          <p className="text-slate-500 text-center py-8">No specific indications found.</p>
+                        )}
                       </div>
                     )}
                     {activeTab === 'adr' && (
-                      <div className="space-y-10 animate-fadeIn">
-                        {adrsByAPI.map((group, idx) => (
-                          <div key={idx} className="space-y-4">
-                            <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                              <div className="w-2 h-6 bg-rose-400 rounded-full"></div>
-                              <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
-                              <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Side Effect Profile)</span>
+                      <div className="animate-fadeIn">
+                        {adrsByAPI.length > 0 ? (
+                          <>
+                            {/* Sub-tabs for ADR APIs */}
+                            {adrsByAPI.length > 1 && (
+                              <div className="flex gap-2 mb-6 border-b border-slate-100 pb-4 overflow-x-auto">
+                                {adrsByAPI.map((group, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setActiveAdrApi(group.api)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                                      activeAdrApi === group.api
+                                        ? 'bg-rose-600 text-white shadow-sm'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    {group.api}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="space-y-4">
+                              {adrsByAPI.filter(g => g.api === activeAdrApi || (adrsByAPI.length === 1)).map((group, idx) => (
+                                <div key={idx} className="space-y-4 animate-fadeIn">
+                                  <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                                    <div className="w-2 h-6 bg-rose-400 rounded-full"></div>
+                                    <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                                    <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Side Effect Profile)</span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {group.adrs.map((adr: any, aIdx: number) => <ADRRow key={aIdx} adr={adr} />)}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="space-y-3">
-                              {group.adrs.map((adr: any, aIdx: number) => <ADRRow key={aIdx} adr={adr} />)}
-                            </div>
-                          </div>
-                        ))}
-                        {adrsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No adverse reactions logged.</p>}
+                          </>
+                        ) : (
+                          <p className="text-slate-500 text-center py-8">No adverse reactions logged.</p>
+                        )}
                       </div>
                     )}
                     {activeTab === 'ddi' && (

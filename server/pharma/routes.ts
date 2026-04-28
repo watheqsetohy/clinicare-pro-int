@@ -146,7 +146,7 @@ router.get('/brand/:brandId', async (req: Request, res: Response) => {
 
     // Fetch PTC Approvals
     const ptcData = await pool.query(`
-      SELECT hospital_name, ptc_code, ptc_date, ptc_level
+      SELECT hospital_name, ptc_code, ptc_date, ptc_level, requester
       FROM pharma.ptc_approval
       WHERE brand_id = $1
     `, [brandId]);
