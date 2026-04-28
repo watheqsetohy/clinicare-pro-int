@@ -1732,36 +1732,38 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
     let fdaSections: any[] = [];
 
     try {
-      // RXCUI → spl_rxnorm_map (product_setid) → bridge (zip_setid) → spl_section
-      // Try SCD-level RXCUIs first (exact match)
+      // Step A: RXCUI → product_setid (via spl_rxnorm_map)
+      let productSetids: string[] = [];
       const splMapRes = await query(`
-        SELECT b.zip_setid, COUNT(*) as section_count
+        SELECT DISTINCT m.setid AS product_setid
         FROM pharma.spl_rxnorm_map m
-        JOIN pharma.spl_setid_bridge b ON b.product_setid = m.setid
-        JOIN pharma.spl_section s ON s.setid = b.zip_setid
         WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD')
-        GROUP BY b.zip_setid
-        ORDER BY section_count DESC
-        LIMIT 1
       `, [allScdRxcuis]);
+      productSetids = splMapRes.rows.map((r: any) => r.product_setid);
 
-      if (splMapRes.rows.length > 0) {
-        fdaSplSetid = splMapRes.rows[0].zip_setid;
+      // Fallback: ingredient-level
+      if (productSetids.length === 0 && inRxcuis.length > 0) {
+        const fallback = await query(`
+          SELECT DISTINCT m.setid AS product_setid
+          FROM pharma.spl_rxnorm_map m
+          WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD','IN')
+        `, [inRxcuis]);
+        productSetids = fallback.rows.map((r: any) => r.product_setid);
       }
 
-      // Fallback: try IN-level RXCUIs (ingredient level)
-      if (!fdaSplSetid && inRxcuis.length > 0) {
-        const fallback = await query(`
-          SELECT b.zip_setid, COUNT(*) as section_count
-          FROM pharma.spl_rxnorm_map m
-          JOIN pharma.spl_setid_bridge b ON b.product_setid = m.setid
-          JOIN pharma.spl_section s ON s.setid = b.zip_setid
-          WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD','IN')
-          GROUP BY b.zip_setid
+      // Step B: product_setid → zip_setid (via bridge)
+      if (productSetids.length > 0) {
+        const bridgeRes = await query(`
+          SELECT b.zip_setid,
+                 (SELECT COUNT(*) FROM pharma.spl_section ss WHERE ss.setid = b.zip_setid) AS section_count
+          FROM pharma.spl_setid_bridge b
+          WHERE b.product_setid = ANY($1::text[])
           ORDER BY section_count DESC
           LIMIT 1
-        `, [inRxcuis]);
-        if (fallback.rows.length > 0) fdaSplSetid = fallback.rows[0].zip_setid;
+        `, [productSetids]);
+        if (bridgeRes.rows.length > 0) {
+          fdaSplSetid = bridgeRes.rows[0].zip_setid;
+        }
       }
 
       if (fdaSplSetid) {
