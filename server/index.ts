@@ -1727,11 +1727,87 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
       top_action: rows[0]?.clinical_action || 'informational',
     }));
 
+    // ── Step 6: FDA DailyMed SPL Sections (full structured HTML) ──────────
+    let fdaSplSetid: string | null = null;
+    let fdaSections: any[] = [];
+
+    try {
+      // Try to find a setid via SCD-level RXCUIs first
+      const splMapRes = await query(`
+        SELECT setid, COUNT(*) as section_count
+        FROM pharma.spl_rxnorm_map m
+        JOIN pharma.spl_section s ON s.setid = m.setid
+        WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD')
+        GROUP BY m.setid
+        ORDER BY section_count DESC
+        LIMIT 1
+      `, [allScdRxcuis]);
+
+      // Fallback: try IN-level RXCUIs
+      if (splMapRes.rows.length === 0 && inRxcuis.length > 0) {
+        const fallback = await query(`
+          SELECT setid, COUNT(*) as section_count
+          FROM pharma.spl_rxnorm_map m
+          JOIN pharma.spl_section s ON s.setid = m.setid
+          WHERE m.rxcui = ANY($1::text[]) AND m.rxtty IN ('SCD','PSN','SBD')
+          GROUP BY m.setid
+          ORDER BY section_count DESC
+          LIMIT 1
+        `, [inRxcuis]);
+        if (fallback.rows.length > 0) fdaSplSetid = fallback.rows[0].setid;
+      } else if (splMapRes.rows.length > 0) {
+        fdaSplSetid = splMapRes.rows[0].setid;
+      }
+
+      if (fdaSplSetid) {
+        const splSections = await query(`
+          SELECT section_number, section_title, section_html, parent_loinc, sort_order
+          FROM pharma.spl_section
+          WHERE setid = $1
+          ORDER BY sort_order
+        `, [fdaSplSetid]);
+
+        // Build hierarchical tree: parent sections contain children
+        const parentMap = new Map<string, any>();
+        const rootSections: any[] = [];
+
+        for (const sec of splSections.rows) {
+          const node = {
+            sectionNumber: sec.section_number,
+            title: sec.section_title,
+            html: sec.section_html,
+            parentLoinc: sec.parent_loinc,
+            sortOrder: sec.sort_order,
+            children: [] as any[],
+          };
+
+          parentMap.set(sec.section_number, node);
+
+          if (sec.parent_loinc) {
+            // Find parent (e.g., §12.1 → parent §12)
+            const parent = parentMap.get(sec.parent_loinc);
+            if (parent) {
+              parent.children.push(node);
+            } else {
+              rootSections.push(node);
+            }
+          } else {
+            rootSections.push(node);
+          }
+        }
+
+        fdaSections = rootSections;
+      }
+    } catch (splErr) {
+      console.warn('[SPL lookup]', splErr);
+    }
+
     res.json({
       ingredientName, inRxcuis, scdfName,
       adverse, reproductive, geriatric, pediatric, contraindicationText,
       medrtDDI, fdaDDI, storage, description, toxicology, clinicalStudies, drugClass,
-      pk, dosing, indications, contraindications, pgxInteractions
+      pk, dosing, indications, contraindications, pgxInteractions,
+      fdaSplSetid, fdaSections
     });
   } catch (err) {
     console.error('[RxNorm monograph]', err);

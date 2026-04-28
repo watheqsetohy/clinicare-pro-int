@@ -789,16 +789,16 @@ export function RxNormBrowser({
                     )}
                   </div>
                 )}
-                {/* Clinical Monograph */}
+                {/* Clinical Monograph — Full FDA DailyMed SPL */}
                 {activeTab === 'monograph' && (
-                  <div className="space-y-6 pb-8">
+                  <div className="space-y-4 pb-8">
                     {monographLoading ? (
                       <div className="flex justify-center py-12"><Activity className="w-8 h-8 text-emerald-500 animate-spin" /></div>
-                    ) : !monograph || (!monograph.adverse?.length && !monograph.dosing?.length && !monograph.pk?.length && !monograph.reproductive?.length && !monograph.geriatric?.length && !monograph.indications?.length && !monograph.contraindications?.length) ? (
+                    ) : !monograph?.fdaSections?.length ? (
                       <div className="text-center py-12 text-slate-400">
                         <Activity className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm font-semibold text-slate-600">No Clinical Monograph Data</p>
-                        <p className="text-xs mt-1">This specific RXCUI does not have mapped CDSS monograph data in the database.</p>
+                        <p className="text-sm font-semibold text-slate-600">No FDA Monograph Data</p>
+                        <p className="text-xs mt-1">No DailyMed SPL data found for this RXCUI.</p>
                       </div>
                     ) : (
                       <>
@@ -813,494 +813,150 @@ export function RxNormBrowser({
                               )}
                             </div>
                             <div className="text-right text-xs text-slate-400 space-y-0.5">
+                              {monograph.fdaSplSetid && (
+                                <p className="font-mono text-[10px]">SPL: {monograph.fdaSplSetid.substring(0, 8)}…</p>
+                              )}
                               {monograph.inRxcuis?.map((r: string) => (
                                 <p key={r} className="font-mono">IN RXCUI: {r}</p>
                               ))}
                             </div>
                           </div>
                         )}
+
                         {/* Drug Class / ATC / EPC Badges */}
                         {monograph.drugClass && Object.keys(monograph.drugClass).length > 0 && (
                           <div className="flex flex-wrap gap-1.5 px-1">
                             {(monograph.drugClass.epc || []).map((v: string, i: number) => (
-                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                🔬 {v}
-                              </span>
+                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">🔬 {v}</span>
                             ))}
                             {(monograph.drugClass.moa || []).map((v: string, i: number) => (
-                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800 border border-violet-200">
-                                ⚙️ {v}
-                              </span>
-                            ))}
-                            {(monograph.drugClass.atc || []).map((v: string, i: number) => (
-                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 font-mono">
-                                ATC: {v}
-                              </span>
-                            ))}
-                            {(monograph.drugClass.ndfrt_kind || []).map((v: string, i: number) => (
-                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                🏷️ {v}
-                              </span>
+                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800 border border-violet-200">⚙️ {v}</span>
                             ))}
                           </div>
                         )}
 
-                        {/* ── Categorised Jump List ── */}
+                        {/* ── FDA Section Jump List ── */}
                         <div className="bg-white rounded-lg border border-slate-200 p-2 sticky top-0 z-10 shadow-sm">
-                          {/* FDA Jump List */}
                           <div className="flex items-center gap-1 flex-wrap">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 px-2 py-1 rounded mr-0.5 shrink-0">FDA</span>
-                            {[
-                              { id: 'sec-dosing',           label: '§2 Dosing',      color: 'text-teal-600',    show: monograph.dosing?.length > 0 },
-                              { id: 'sec-ci-text',          label: '§4 CI',          color: 'text-red-500',     show: monograph.contraindicationText?.length > 0 },
-                              { id: 'sec-adverse',          label: '§6 ADR',         color: 'text-rose-600',    show: monograph.adverse?.length > 0 },
-                              { id: 'sec-interactions',     label: '§7 DDI',         color: 'text-amber-600',   show: monograph.fdaDDI?.length > 0 },
-                              { id: 'sec-reproductive',     label: '§8 Pregnancy',   color: 'text-purple-600',  show: monograph.reproductive?.length > 0 },
-                              { id: 'sec-pediatric',        label: '§8.4 Peds',      color: 'text-sky-600',     show: monograph.pediatric?.length > 0 },
-                              { id: 'sec-geriatric',        label: '§8.5 Geri',      color: 'text-slate-600',   show: monograph.geriatric?.length > 0 },
-                              { id: 'sec-description',      label: '§11 Desc',       color: 'text-indigo-600',  show: monograph.description?.length > 0 },
-                              { id: 'sec-pk',               label: '§12 PK',         color: 'text-blue-600',    show: monograph.pk?.length > 0 },
-                              { id: 'sec-toxicology',       label: '§13 Tox',        color: 'text-orange-700',  show: monograph.toxicology?.length > 0 },
-                              { id: 'sec-clinical-studies', label: '§14 Studies',    color: 'text-cyan-700',    show: monograph.clinicalStudies?.length > 0 },
-                              { id: 'sec-storage',          label: '§16 Storage',    color: 'text-lime-700',    show: monograph.storage?.length > 0 },
-                            ].filter(s => s.show).map(s => (
-                              <button key={s.id} onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200', s.color)}>
-                                {s.label}
-                              </button>
-                            ))}
+                            {monograph.fdaSections.map((sec: any) => {
+                              const isBoxed = sec.sectionNumber === '0';
+                              return (
+                                <button key={sec.sectionNumber}
+                                  onClick={() => document.getElementById(`fda-sec-${sec.sectionNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                  className={cn(
+                                    'px-2 py-1 rounded-md text-[11px] font-semibold hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200',
+                                    isBoxed ? 'text-red-600 font-black' : 'text-slate-600'
+                                  )}
+                                >
+                                  {isBoxed ? '⚠ §0' : `§${sec.sectionNumber}`}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
-
-
-
-                        {/* ═══ FDA Monograph Group Header ═══ */}
-                        <div className="flex items-center gap-3 pt-3 mt-2">
+                        {/* FDA Header */}
+                        <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-white bg-blue-600 px-2.5 py-1 rounded-md">FDA</span>
                             <span className="text-[12px] font-bold text-slate-600">Drug Monograph</span>
                           </div>
                           <div className="flex-1 border-t border-blue-200" />
-                          <span className="text-[9px] text-slate-400 font-medium">FDA SPL §1–§17</span>
+                          <span className="text-[9px] text-slate-400 font-medium">FDA SPL §0–§17 · DailyMed</span>
                         </div>
 
-                        {/* ── Dosing & Administration — single FDA §2 section ── */}
-                        {monograph.dosing?.length > 0 && (() => {
-                          // Single best record (DB now stores one standard row per drug)
-                          const best = (monograph.dosing as any[]).reduce((a: any, b: any) =>
-                            (b.raw_text?.length || 0) > (a.raw_text?.length || 0) ? b : a
-                          );
-                          return (
-                            <details id="sec-dosing" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group" open>
-                              <summary className="px-4 py-3 bg-teal-50 border-b border-teal-100 flex items-center justify-between cursor-pointer select-none">
-                                <div className="flex items-center gap-2">
-                                  <ChevronRight className="w-4 h-4 text-teal-400 transition-transform group-open:rotate-90" />
-                                  <Activity className="w-4 h-4 text-teal-700" />
-                                  <h3 className="font-bold text-teal-900 text-sm">Dosing & Administration</h3>
-                                </div>
-                                <span className="text-[10px] text-teal-500 font-mono bg-teal-100/50 px-2 py-0.5 rounded">FDA §2</span>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {/* Structured dose fields if present */}
-                                {(best.max_dose || best.dose_adjustment || best.monitoring) && (
-                                  <div className="flex items-center gap-2 flex-wrap bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
-                                    {best.max_dose && <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider border border-rose-200 bg-rose-50 px-1.5 py-0.5 rounded">Max: {best.max_dose}</span>}
-                                    {best.dose_adjustment && <span className="text-[11px] text-slate-700"><strong className="text-slate-500 text-[10px] mr-1">ADJ:</strong>{best.dose_adjustment}</span>}
-                                    {best.monitoring && <span className="text-[11px] text-slate-700"><strong className="text-slate-500 text-[10px] mr-1">MON:</strong>{best.monitoring}</span>}
-                                  </div>
-                                )}
-                                {/* FDA §2 full section — FdaMonographView renders §2.1/§2.2 Renal/§2.3 Hepatic as subsections */}
-                                {best.raw_text ? (
-                                  <FdaMonographView rawText={best.raw_text} label={best.source} accentTop="2" />
-                                ) : (
-                                  <p className="text-[12px] text-slate-400 italic">No dosing text available.</p>
-                                )}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-
-                        {/* Clinical Pharmacology */}
-                        {monograph.pk?.length > 0 && (() => {
-                          const p = monograph.pk[0];
-                          const hasStructured = p.half_life || p.bioavailability || p.metabolism_route || p.excretion_route;
-                          return (
-                            <details id="sec-pk" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/pk" open>
-                              <summary className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-blue-400 transition-transform group-open/pk:rotate-90" />
-                                <FlaskConical className="w-4 h-4 text-blue-700" />
-                                <h3 className="font-bold text-blue-900 text-sm">Clinical Pharmacology</h3>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {hasStructured && (
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {[
-                                      { label: 'Half-Life', value: p.half_life },
-                                      { label: 'Bioavailability', value: p.bioavailability ? p.bioavailability + '%' : null },
-                                      { label: 'Metabolism', value: p.metabolism_route },
-                                      { label: 'Excretion', value: p.excretion_route },
-                                    ].filter(item => item.value).map((item, idx) => (
-                                      <div key={idx} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                        <span className="font-bold text-slate-400 block text-[9px] uppercase tracking-wider mb-0.5">{item.label}</span>
-                                        <span className="font-semibold text-slate-700 text-[13px]">{item.value}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                {p.metabolizing_enzymes?.length > 0 && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-slate-500 text-[10px] uppercase tracking-wider">Enzymes:</span>
-                                    <div className="flex gap-1 flex-wrap">
-                                      {p.metabolizing_enzymes.map((e: string, idx: number) => (
-                                        <span key={idx} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-blue-100">{e}</span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {p.raw_text && (
-                                  <FdaMonographView rawText={p.raw_text} accentTop="12" />
-                                )}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* Adverse Effects — single consolidated entry */}
-                        {monograph.adverse?.length > 0 && (() => {
-                          const a = monograph.adverse[0];
-                          return (
-                            <details id="sec-adverse" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/adr" open>
-                              <summary className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between cursor-pointer select-none">
-                                <div className="flex items-center gap-2">
-                                  <ChevronRight className="w-4 h-4 text-rose-400 transition-transform group-open/adr:rotate-90" />
-                                  <AlertCircle className="w-4 h-4 text-rose-700" />
-                                  <h3 className="font-bold text-rose-900 text-sm">Adverse Reactions</h3>
-                                </div>
-                                <span className="text-[10px] font-semibold text-rose-600 bg-rose-100/50 px-2 py-0.5 rounded-full">FDA Label</span>
-                              </summary>
-                              <div className="px-4 pb-4">
-                                <FdaMonographView rawText={a.effect_name} label={a.source} accentTop="6" />
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* ── §7 Drug Interactions ── */}
-                        {monograph.fdaDDI?.length > 0 && (() => {
-                          const best = monograph.fdaDDI[0];
-                          return (
-                            <details id="sec-interactions" className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden group/ix" open>
-                              <summary className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between cursor-pointer select-none">
-                                <div className="flex items-center gap-2">
-                                  <ChevronRight className="w-4 h-4 text-amber-400 transition-transform group-open/ix:rotate-90" />
-                                  <AlertCircle className="w-4 h-4 text-amber-700" />
-                                  <h3 className="font-bold text-amber-900 text-sm">§7 Drug Interactions</h3>
-                                </div>
-                                <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-full">FDA §7</span>
-                              </summary>
-                              <div className="px-4 pb-4">
-                                <FdaMonographView rawText={best.effect_description} label={best.source || 'FDA_SPL'} accentTop="7" />
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* Pregnancy & Lactation — 1 entry per category from server */}
-                        {monograph.reproductive?.length > 0 && (() => {
-                          const catMeta: Record<string, { label: string; icon: string; color: string }> = {
-                            pregnancy: { label: 'Pregnancy', icon: '🤰', color: 'text-purple-700' },
-                            lactation: { label: 'Lactation', icon: '🍼', color: 'text-pink-700' },
-                            fertility: { label: 'Fertility', icon: '🧬', color: 'text-indigo-700' },
+                        {/* ═══ Render All FDA Sections ═══ */}
+                        {monograph.fdaSections.map((sec: any) => {
+                          const isBoxed = sec.sectionNumber === '0';
+                          const sectionColors: Record<string, { border: string; bg: string; text: string; chevron: string }> = {
+                            '0':  { border: 'border-red-400',    bg: 'bg-red-50',     text: 'text-red-900',     chevron: 'text-red-500' },
+                            '1':  { border: 'border-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-900', chevron: 'text-emerald-400' },
+                            '2':  { border: 'border-teal-200',   bg: 'bg-teal-50',    text: 'text-teal-900',    chevron: 'text-teal-400' },
+                            '3':  { border: 'border-cyan-200',   bg: 'bg-cyan-50',    text: 'text-cyan-900',    chevron: 'text-cyan-400' },
+                            '4':  { border: 'border-red-200',    bg: 'bg-red-50',     text: 'text-red-900',     chevron: 'text-red-400' },
+                            '5':  { border: 'border-orange-200', bg: 'bg-orange-50',  text: 'text-orange-900',  chevron: 'text-orange-400' },
+                            '6':  { border: 'border-rose-200',   bg: 'bg-rose-50',    text: 'text-rose-900',    chevron: 'text-rose-400' },
+                            '7':  { border: 'border-amber-200',  bg: 'bg-amber-50',   text: 'text-amber-900',   chevron: 'text-amber-400' },
+                            '8':  { border: 'border-purple-200', bg: 'bg-purple-50',  text: 'text-purple-900',  chevron: 'text-purple-400' },
+                            '9':  { border: 'border-slate-200',  bg: 'bg-slate-50',   text: 'text-slate-900',   chevron: 'text-slate-400' },
+                            '10': { border: 'border-pink-200',   bg: 'bg-pink-50',    text: 'text-pink-900',    chevron: 'text-pink-400' },
+                            '11': { border: 'border-indigo-200', bg: 'bg-indigo-50',  text: 'text-indigo-900',  chevron: 'text-indigo-400' },
+                            '12': { border: 'border-blue-200',   bg: 'bg-blue-50',    text: 'text-blue-900',    chevron: 'text-blue-400' },
+                            '13': { border: 'border-orange-200', bg: 'bg-orange-50',  text: 'text-orange-900',  chevron: 'text-orange-400' },
+                            '14': { border: 'border-cyan-200',   bg: 'bg-cyan-50',    text: 'text-cyan-900',    chevron: 'text-cyan-400' },
+                            '15': { border: 'border-slate-200',  bg: 'bg-slate-50',   text: 'text-slate-900',   chevron: 'text-slate-400' },
+                            '16': { border: 'border-lime-200',   bg: 'bg-lime-50',    text: 'text-lime-900',    chevron: 'text-lime-400' },
+                            '17': { border: 'border-teal-200',   bg: 'bg-teal-50',    text: 'text-teal-900',    chevron: 'text-teal-400' },
                           };
-                          return (
-                            <details id="sec-reproductive" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/repro" open>
-                              <summary className="px-4 py-3 bg-purple-50 border-b border-purple-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-purple-400 transition-transform group-open/repro:rotate-90" />
-                                <Heart className="w-4 h-4 text-purple-700" />
-                                <h3 className="font-bold text-purple-900 text-sm">Pregnancy & Lactation</h3>
-                              </summary>
-                              <div className="divide-y divide-slate-100">
-                                {monograph.reproductive.map((r: any, i: number) => {
-                                  const cat = (r.category || 'other').toLowerCase();
-                                  const meta = catMeta[cat] || { label: cat.charAt(0).toUpperCase() + cat.slice(1), icon: '📋', color: 'text-slate-700' };
-                                  return (
-                                    <details key={i} className="group" open>
-                                      <summary className="px-4 py-3 cursor-pointer select-none hover:bg-purple-50/30 transition-colors flex items-center gap-3 bg-purple-50/20">
-                                        <ChevronRight className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90 shrink-0" />
-                                        <span className="text-base">{meta.icon}</span>
-                                        <span className={cn("text-[14px] font-bold", meta.color)}>{meta.label}</span>
-                                        {r.fda_category && (
-                                          <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-black border border-purple-200">
-                                            FDA: {r.fda_category}
-                                          </span>
-                                        )}
-                                      </summary>
-                                      <div className="px-4 pb-4">
-                                        {r.recommendation && (
-                                          <p className="text-[13px] text-slate-700 font-medium mb-2">{r.recommendation}</p>
-                                        )}
-                                        {r.raw_text && (
-                                          <FdaMonographView rawText={r.raw_text} accentTop="8" />
-                                        )}
-                                      </div>
-                                    </details>
-                                  );
-                                })}
-                              </div>
-                            </details>
-                          );
-                        })()}
-                        {/* ── Contraindication FDA Text (§4) — shown below SNOMED list ── */}
-                        {monograph.contraindicationText?.length > 0 && (() => {
-                          const c = monograph.contraindicationText[0];
-                          return (
-                            <details id="sec-ci-text" className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden group/ci">
-                              <summary className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-red-400 transition-transform group-open/ci:rotate-90" />
-                                <Shield className="w-4 h-4 text-red-600" />
-                                <h3 className="font-bold text-red-900 text-sm">§4 Contraindications — FDA Label</h3>
-                                <span className="text-[9px] ml-auto text-red-400 font-mono">{c.source}</span>
-                              </summary>
-                              <div className="p-4">
-                                <FdaMonographView rawText={c.raw_text} accentTop="4" />
-                              </div>
-                            </details>
-                          );
-                        })()}
+                          const colors = sectionColors[sec.sectionNumber] || { border: 'border-slate-200', bg: 'bg-slate-50', text: 'text-slate-900', chevron: 'text-slate-400' };
 
-                        {/* ── §8.4 Pediatric Use ── */}
-                        {monograph.pediatric?.length > 0 && (() => {
-                          const p = monograph.pediatric[0];
                           return (
-                            <details id="sec-pediatric" className="bg-white rounded-xl border border-sky-200 shadow-sm overflow-hidden group/ped">
-                              <summary className="px-4 py-3 bg-sky-50 border-b border-sky-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-sky-400 transition-transform group-open/ped:rotate-90" />
-                                <Info className="w-4 h-4 text-sky-700" />
-                                <h3 className="font-bold text-sky-900 text-sm">§8.4 Pediatric Use</h3>
-                                {p.approved === false && (
-                                  <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold border border-red-200 ml-1">Not Approved</span>
-                                )}
-                                {p.contraindicated && (
-                                  <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold border border-red-200 ml-1">Contraindicated</span>
-                                )}
-                                {p.age_group && (
-                                  <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-semibold border border-sky-200 ml-1">{p.age_group}</span>
-                                )}
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {p.dose_note && (
-                                  <div className="flex items-start gap-2 p-3 bg-sky-50 rounded-lg border border-sky-100">
-                                    <Info className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
-                                    <p className="text-[13px] text-sky-900 font-medium leading-relaxed">{p.dose_note}</p>
-                                  </div>
-                                )}
-                                {p.raw_text && <FdaMonographView rawText={p.raw_text} accentTop="8" />}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* ── §8.5 Geriatric Use ── */}
-                        {monograph.geriatric?.length > 0 && (() => {
-                          const g = monograph.geriatric[0];
-                          const riskColors: Record<string, string> = {
-                            avoid:             'bg-red-100 text-red-700 border-red-200',
-                            use_with_caution:  'bg-amber-100 text-amber-700 border-amber-200',
-                            generally_safe:    'bg-emerald-100 text-emerald-700 border-emerald-200',
-                          };
-                          const riskColor = riskColors[g.risk_level] || 'bg-slate-100 text-slate-600 border-slate-200';
-                          return (
-                            <details id="sec-geriatric" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/ger">
-                              <summary className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-slate-400 transition-transform group-open/ger:rotate-90" />
-                                <BookOpen className="w-4 h-4 text-slate-600" />
-                                <h3 className="font-bold text-slate-800 text-sm">§8.5 Geriatric Use</h3>
-                                {g.risk_level && (
-                                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-bold border ml-1', riskColor)}>
-                                    {g.risk_level.replace(/_/g, ' ')}
+                            <details
+                              key={sec.sectionNumber}
+                              id={`fda-sec-${sec.sectionNumber}`}
+                              className={cn(
+                                'bg-white rounded-xl shadow-sm overflow-hidden group/fda',
+                                isBoxed ? 'border-2 border-red-400 ring-2 ring-red-100' : `border ${colors.border}`
+                              )}
+                              open={isBoxed}
+                            >
+                              <summary className={cn(
+                                'px-4 py-3 border-b flex items-center gap-2 cursor-pointer select-none',
+                                isBoxed ? 'bg-red-100 border-red-200' : `${colors.bg} ${colors.border}`
+                              )}>
+                                <ChevronRight className={cn('w-4 h-4 transition-transform group-open/fda:rotate-90', colors.chevron)} />
+                                {isBoxed && <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />}
+                                <span className={cn(
+                                  'text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0',
+                                  isBoxed ? 'bg-red-600 text-white' : 'bg-white/80 text-blue-600 border border-blue-100'
+                                )}>
+                                  §{sec.sectionNumber}
+                                </span>
+                                <h3 className={cn('font-bold text-sm flex-1', colors.text)}>
+                                  {sec.title}
+                                </h3>
+                                {sec.children?.length > 0 && (
+                                  <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                                    {sec.children.length} sub-sections
                                   </span>
                                 )}
-                                {g.beers_criteria && (
-                                  <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold border border-orange-200 ml-1">Beers Criteria</span>
-                                )}
                               </summary>
-                              <div className="p-4 space-y-3">
-                                {(g.beers_criteria || g.stopp_criteria || g.rationale || g.alternative) && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {g.beers_category && (
-                                      <div className="p-2.5 bg-orange-50 rounded-lg border border-orange-100">
-                                        <span className="text-[9px] uppercase tracking-wider font-bold text-orange-500 block mb-0.5">Beers Category</span>
-                                        <span className="text-[12px] text-orange-900 font-semibold">{g.beers_category}</span>
-                                      </div>
-                                    )}
-                                    {g.rationale && (
-                                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                                        <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block mb-0.5">Rationale</span>
-                                        <span className="text-[12px] text-slate-700">{g.rationale}</span>
-                                      </div>
-                                    )}
-                                    {g.alternative && (
-                                      <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-100 md:col-span-2">
-                                        <span className="text-[9px] uppercase tracking-wider font-bold text-emerald-500 block mb-0.5">Recommended Alternative</span>
-                                        <span className="text-[12px] text-emerald-800 font-medium">{g.alternative}</span>
-                                      </div>
-                                    )}
+
+                              <div className="divide-y divide-slate-100">
+                                {/* Parent section HTML */}
+                                {sec.html && (
+                                  <div className={cn('p-4 spl-content', isBoxed && 'bg-red-50/30')}>
+                                    <div dangerouslySetInnerHTML={{ __html: sec.html }} />
                                   </div>
                                 )}
-                                {g.raw_text && <FdaMonographView rawText={g.raw_text} accentTop="8" />}
+
+                                {/* Child sub-sections (e.g., §12.1, §12.2, §12.3) */}
+                                {sec.children?.map((child: any) => (
+                                  <details key={child.sectionNumber} className="group/child" open>
+                                    <summary className="px-6 py-2.5 bg-slate-50/50 flex items-center gap-2 cursor-pointer select-none hover:bg-slate-100/50 transition-colors">
+                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 transition-transform group-open/child:rotate-90" />
+                                      <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">
+                                        §{child.sectionNumber}
+                                      </span>
+                                      <h4 className="font-semibold text-[13px] text-slate-700">{child.title}</h4>
+                                    </summary>
+                                    {child.html && (
+                                      <div className="px-6 py-3 spl-content">
+                                        <div dangerouslySetInnerHTML={{ __html: child.html }} />
+                                      </div>
+                                    )}
+                                  </details>
+                                ))}
                               </div>
                             </details>
                           );
-                        })()}
+                        })}
                       </>
                     )}
-
-                        {/* ── §16 Storage & Handling + §16.1 How Supplied ── */}
-                        {monograph.storage?.length > 0 && (() => {
-                          const s = monograph.storage[0];
-                          return (
-                            <details id="sec-storage" className="bg-white rounded-xl border border-lime-200 shadow-sm overflow-hidden group/stor" open>
-                              <summary className="px-4 py-3 bg-lime-50 border-b border-lime-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-lime-400 transition-transform group-open/stor:rotate-90" />
-                                <Package className="w-4 h-4 text-lime-700" />
-                                <h3 className="font-bold text-lime-900 text-sm">§16 Storage, Supply &amp; Handling</h3>
-                                <span className="text-[10px] text-lime-600 ml-auto font-medium">{s.source}</span>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {/* How Supplied */}
-                                {s.how_supplied && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">§16.1 How Supplied</span>
-                                    <div className="bg-slate-50 rounded-lg border border-slate-100 p-3">
-                                      <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap">{s.how_supplied}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Storage & Handling */}
-                                {s.storage_text && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">§16.2 Storage &amp; Handling</span>
-                                    <div className="bg-lime-50/60 rounded-lg border border-lime-100 p-3">
-                                      <p className="text-[12px] text-lime-900 leading-relaxed whitespace-pre-wrap">{s.storage_text}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Instructions for Use */}
-                                {s.instructions_for_use && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">§17 Instructions for Use / Patient Counseling</span>
-                                    <div className="bg-teal-50/50 rounded-lg border border-teal-100 p-3">
-                                      <p className="text-[12px] text-teal-900 leading-relaxed whitespace-pre-wrap">{s.instructions_for_use}</p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* ── §11 Description ── */}
-                        {monograph.description?.length > 0 && (() => {
-                          const d = monograph.description[0];
-                          return (
-                            <details id="sec-description" className="bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden group/desc">
-                              <summary className="px-4 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-indigo-400 transition-transform group-open/desc:rotate-90" />
-                                <FileText className="w-4 h-4 text-indigo-700" />
-                                <h3 className="font-bold text-indigo-900 text-sm">§11 Description</h3>
-                                <span className="text-[10px] text-indigo-600 ml-auto font-medium">{d.source}</span>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {d.pharmacologic_class && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pharmacologic Class</span>
-                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[11px] font-semibold rounded-full border border-indigo-200">{d.pharmacologic_class}</span>
-                                  </div>
-                                )}
-                                {d.mechanism_summary && (
-                                  <div className="bg-violet-50 rounded-lg border border-violet-100 p-3">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-400 block mb-1">Mechanism of Action</span>
-                                    <p className="text-[12px] text-violet-900 leading-relaxed">{d.mechanism_summary}</p>
-                                  </div>
-                                )}
-                                {d.description_text && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">Full Description</span>
-                                    <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap">{d.description_text}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* ── §13 Nonclinical Toxicology ── */}
-                        {monograph.toxicology?.length > 0 && (() => {
-                          const t = monograph.toxicology[0];
-                          return (
-                            <details id="sec-toxicology" className="bg-white rounded-xl border border-orange-200 shadow-sm overflow-hidden group/tox">
-                              <summary className="px-4 py-3 bg-orange-50 border-b border-orange-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-orange-400 transition-transform group-open/tox:rotate-90" />
-                                <AlertCircle className="w-4 h-4 text-orange-700" />
-                                <h3 className="font-bold text-orange-900 text-sm">§13 Nonclinical Toxicology</h3>
-                                <span className="text-[10px] text-orange-600 ml-auto font-medium">{t.source}</span>
-                              </summary>
-                              <div className="p-4 space-y-3">
-                                {t.carcinogenesis_text && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">§13.1 Carcinogenesis</span>
-                                    <div className="bg-orange-50/60 rounded-lg border border-orange-100 p-3">
-                                      <p className="text-[12px] text-slate-800 leading-relaxed whitespace-pre-wrap">{t.carcinogenesis_text}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {t.mutagenesis_text && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">§13.2 Mutagenesis</span>
-                                    <div className="bg-yellow-50/60 rounded-lg border border-yellow-100 p-3">
-                                      <p className="text-[12px] text-slate-800 leading-relaxed whitespace-pre-wrap">{t.mutagenesis_text}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {t.reproductive_impairment_text && (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">§13.3 Reproductive Impairment</span>
-                                    <div className="bg-red-50/60 rounded-lg border border-red-100 p-3">
-                                      <p className="text-[12px] text-slate-800 leading-relaxed whitespace-pre-wrap">{t.reproductive_impairment_text}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                {!t.carcinogenesis_text && !t.mutagenesis_text && t.raw_text && (
-                                  <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap">{t.raw_text}</p>
-                                )}
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-                        {/* ── §14 Clinical Studies ── */}
-                        {monograph.clinicalStudies?.length > 0 && (() => {
-                          const cs = monograph.clinicalStudies[0];
-                          return (
-                            <details id="sec-clinical-studies" className="bg-white rounded-xl border border-cyan-200 shadow-sm overflow-hidden group/cs">
-                              <summary className="px-4 py-3 bg-cyan-50 border-b border-cyan-100 flex items-center gap-2 cursor-pointer select-none">
-                                <ChevronRight className="w-4 h-4 text-cyan-400 transition-transform group-open/cs:rotate-90" />
-                                <BarChart2 className="w-4 h-4 text-cyan-700" />
-                                <h3 className="font-bold text-cyan-900 text-sm">§14 Clinical Studies</h3>
-                                <span className="text-[10px] text-cyan-600 ml-auto font-medium">{cs.source}</span>
-                              </summary>
-                              <div className="p-4">
-                                <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-wrap">{cs.raw_text}</p>
-                              </div>
-                            </details>
-                          );
-                        })()}
-
-
                   </div>
                 )}
+
               </div>
             </div>
           ) : (
