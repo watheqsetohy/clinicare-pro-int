@@ -1,5 +1,5 @@
 /**
- * Pharma REST API — Sprint 5
+ * Pharma REST API — Sprint 5+
  *
  * Endpoints:
  *   GET  /api/pharma/search?q=&atc=&status=&limit=&offset=
@@ -7,6 +7,10 @@
  *   GET  /api/pharma/brand/:brandId/ingredients
  *   GET  /api/pharma/brand/:brandId/adrs
  *   GET  /api/pharma/brand/:brandId/indications
+ *   GET  /api/pharma/brand/:brandId/packaging          — dual source (local + live)
+ *   POST /api/pharma/packaging/sync-live               — trigger live DB sync
+ *   GET  /api/pharma/packaging/live-status             — test live DB connectivity
+ *   GET  /api/pharma/packaging/sync-history            — audit log of syncs
  *   POST /api/pharma/ddi-check          { ddinterIds: string[] }
  *   GET  /api/pharma/ingredient/:irId
  *   GET  /api/pharma/stats
@@ -14,6 +18,7 @@
 
 import { Router, Request, Response } from 'express';
 import { pool } from '../db.js';
+import { testLiveConnection, syncPackagingFromLive } from './live-sync.js';
 
 const router = Router();
 
@@ -119,10 +124,35 @@ router.get('/brand/:brandId', async (req: Request, res: Response) => {
       WHERE brand_id = $1
     `, [brandId]);
 
-    res.json({
+    const baseData = {
       ...rows[0],
       ...(clinical.rows[0] || {}),
-    });
+    };
+
+    // Fetch ATC details
+    if (baseData.atc_code) {
+      const atcData = await pool.query(`
+        SELECT a.l1_code, a.l1_name, a.l2_code, a.l2_name, a.l3_code, a.l3_name, a.l4_code, a.l4_name, a.substance as l5_name,
+               d.ddd, d.uom, d.adm_route as atc_adm_route
+        FROM pharma.atc a
+        LEFT JOIN pharma.atc_ddd d ON d.atc_code = a.atc_code
+        WHERE a.atc_code = $1
+        LIMIT 1
+      `, [baseData.atc_code]);
+      if (atcData.rows.length) {
+        Object.assign(baseData, atcData.rows[0]);
+      }
+    }
+
+    // Fetch PTC Approvals
+    const ptcData = await pool.query(`
+      SELECT hospital_name, ptc_code, ptc_date, ptc_level
+      FROM pharma.ptc_approval
+      WHERE brand_id = $1
+    `, [brandId]);
+    baseData.ptc_approvals = ptcData.rows;
+
+    res.json(baseData);
   } catch (error) {
     console.error('[Pharma API] Brand detail error:', error);
     res.status(500).json({ error: 'Failed to fetch brand details.' });
@@ -157,9 +187,11 @@ router.get('/brand/:brandId/ingredients', async (req: Request, res: Response) =>
 
     const { rows } = await pool.query(`
       SELECT
-        si.scdf_in_id,
-        si.rank,
+        si.scd_in_id,
+        si.in_rank AS rank,
         si.api,
+        si.api_conc,
+        si.api_conc_unit,
         si.api_roa_ref,
         si.ingredient_route_id,
         ir.api_roa,
@@ -176,13 +208,13 @@ router.get('/brand/:brandId/ingredients', async (req: Request, res: Response) =>
         cr.approval_status
       FROM pharma.brand b
       JOIN pharma.scd s ON s.scd_id = b.scd_id
-      JOIN pharma.scdf_ingredient si ON si.scdf_id = s.scdf_id
+      JOIN pharma.scd_ingredient si ON si.scd_id = s.scd_id
       LEFT JOIN pharma.ingredient_route ir ON ir.id = si.ingredient_route_id
       LEFT JOIN pharma.ir_clinical_rule cr
         ON cr.ingredient_route_id = si.ingredient_route_id
         AND cr.is_active = TRUE AND cr.approval_status = 'Approved'
       WHERE b.brand_id = $1
-      ORDER BY si.rank ASC NULLS LAST
+      ORDER BY si.in_rank ASC NULLS LAST
     `, [brandId]);
 
     res.json({ brandId, ingredients: rows });
@@ -530,6 +562,107 @@ router.post('/refresh-views', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Pharma API] Refresh error:', error);
     res.status(500).json({ error: 'View refresh failed.' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// 11. PACKAGING HIERARCHY — dual source (local + live)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/pharma/brand/:brandId/packaging
+ * Returns both local and live packaging rows merged.
+ * If both exist, live takes priority (shown as override).
+ */
+router.get('/brand/:brandId/packaging', async (req: Request, res: Response) => {
+  try {
+    const { brandId } = req.params;
+
+    const { rows } = await pool.query(`
+      SELECT
+        source,
+        major_unit,  major_unit_qty,
+        mid_unit,    mid_unit_qty,
+        minor_unit,  minor_unit_qty,
+        synced_at,   updated_at
+      FROM pharma.brand_packaging
+      WHERE brand_id = $1
+      ORDER BY CASE source WHEN 'live' THEN 0 ELSE 1 END
+    `, [brandId]);
+
+    // Build a merged view: live overrides local
+    const local = rows.find(r => r.source === 'local') || null;
+    const live  = rows.find(r => r.source === 'live')  || null;
+
+    // The "resolved" value: live wins where it has data
+    const resolved = {
+      major_unit:     live?.major_unit     ?? local?.major_unit,
+      major_unit_qty: live?.major_unit_qty ?? local?.major_unit_qty,
+      mid_unit:       live?.mid_unit       ?? local?.mid_unit,
+      mid_unit_qty:   live?.mid_unit_qty   ?? local?.mid_unit_qty,
+      minor_unit:     live?.minor_unit     ?? local?.minor_unit,
+      minor_unit_qty: live?.minor_unit_qty ?? local?.minor_unit_qty,
+    };
+
+    res.json({
+      brandId,
+      resolved,
+      local,
+      live,
+      hasLive: !!live,
+    });
+  } catch (error) {
+    console.error('[Pharma API] Packaging error:', error);
+    res.status(500).json({ error: 'Failed to fetch packaging data.' });
+  }
+});
+
+/**
+ * GET /api/pharma/packaging/live-status
+ * Test live DB connectivity.
+ */
+router.get('/packaging/live-status', async (_req: Request, res: Response) => {
+  try {
+    const result = await testLiveConnection();
+    res.json(result);
+  } catch (error) {
+    console.error('[Pharma API] Live status error:', error);
+    res.status(500).json({ connected: false, error: String(error) });
+  }
+});
+
+/**
+ * POST /api/pharma/packaging/sync-live
+ * Trigger a live DB packaging sync.
+ */
+router.post('/packaging/sync-live', async (req: Request, res: Response) => {
+  try {
+    const triggeredBy = (req as any).user?.loginId || 'api';
+    const result = await syncPackagingFromLive(triggeredBy);
+    res.json(result);
+  } catch (error) {
+    console.error('[Pharma API] Live sync error:', error);
+    res.status(500).json({ error: 'Live sync failed.' });
+  }
+});
+
+/**
+ * GET /api/pharma/packaging/sync-history
+ * Returns recent live sync audit log entries.
+ */
+router.get('/packaging/sync-history', async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, sync_type, triggered_by, records_synced, status, error_msg, started_at, completed_at,
+             EXTRACT(EPOCH FROM (completed_at - started_at)) * 1000 AS duration_ms
+      FROM pharma.live_sync_log
+      ORDER BY id DESC
+      LIMIT 20
+    `);
+    res.json({ history: rows });
+  } catch (error) {
+    console.error('[Pharma API] Sync history error:', error);
+    res.status(500).json({ error: 'Failed to fetch sync history.' });
   }
 });
 

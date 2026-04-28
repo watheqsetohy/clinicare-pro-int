@@ -647,8 +647,49 @@ export async function seedPharmaLayer3() {
   await seedSCD();
   await seedSCDIngredient(irLookup);
   await seedBrand();
+  await seedPTCApprovals();
 
   console.log('[Pharma Seed L3] Layer 3 seed complete ✅');
+}
+
+async function seedPTCApprovals() {
+  const rows = readSheet(path.join(DATA_DIR, 'Directories.xlsx'), 'PTCs_Approvals');
+  if (!rows.length) return;
+
+  const batchId = await createBatch('PTCs_Approvals', rows.length);
+  let inserted = 0;
+
+  for (const r of rows) {
+    const brandId = r['Brand ID'];
+    if (!brandId) continue;
+    
+    const ptcDate = r['Approval Date'];
+    let ptcDateVal: string | null = null;
+    if (ptcDate) {
+      if (typeof ptcDate === 'number') {
+        // Excel serial date
+        const d = new Date((ptcDate - 25569) * 86400 * 1000);
+        ptcDateVal = d.toISOString().split('T')[0];
+      } else {
+        ptcDateVal = String(ptcDate);
+      }
+    }
+
+    const res = await pool.query(
+      `INSERT INTO pharma.ptc_approval (brand_id, hospital_name, ptc_code, ptc_date, ptc_level, batch_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [
+        brandId.trim(),
+        r['Hospital'] || 'Unknown',
+        r['PTC'] || null,
+        ptcDateVal,
+        r['Approval Level'] || null,
+        batchId,
+      ]
+    );
+    if (res.rowCount && res.rowCount > 0) inserted++;
+  }
+  console.log(`[Pharma Seed] PTC Approvals: ${inserted}/${rows.length} inserted`);
 }
 
 // ── Layer 4 Seeds (batch insert for performance) ─────────────────────────────

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck, Biohazard, Snowflake, Zap, Sun, Droplets, Syringe, Package, Loader2 } from 'lucide-react';
+import { Search, Filter, AlertTriangle, Pill, ShieldAlert, Activity, BookOpen, Layers, CheckCircle2, ChevronRight, X, FlaskConical, Beaker, Thermometer, BrainCircuit, Fingerprint, ImagePlus, ShieldCheck, Stethoscope, Network, Info, Scale, ExternalLink, Eye, ChevronDown, Lock, Circle, ClipboardCheck, Biohazard, Snowflake, Zap, Sun, Droplets, Syringe, Package, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 function Badge({ children, variant, className }: any) {
@@ -39,6 +39,10 @@ interface BrandDetail {
   resolved_concern_level?: string;
   resolved_cytotoxic?: boolean;
   resolved_controlled?: boolean;
+  clinisys_code?: string;
+  psp?: boolean;
+  scd_id?: string;
+  scdf_id?: string;
   ham?: string;
   resolved_renal_adj: boolean;
   resolved_hepatic_adj: boolean;
@@ -61,6 +65,34 @@ interface BrandDetail {
   image_id?: string;
   vezeeta_image_url?: string;
   ingredients?: any[];
+  product_type?: string;
+  ptc_approvals?: {
+    hospital_name: string;
+    ptc_code: string;
+    ptc_date: string;
+    ptc_level: string;
+  }[];
+  major_unit?: string;
+  major_unit_qty?: string;
+  mid_unit?: string;
+  mid_unit_qty?: string;
+  minor_unit?: string;
+  minor_unit_qty?: string;
+  default_rx_unit?: string;
+  default_roa?: string;
+  roa_df?: string;
+  l1_code?: string;
+  l1_name?: string;
+  l2_code?: string;
+  l2_name?: string;
+  l3_code?: string;
+  l3_name?: string;
+  l4_code?: string;
+  l4_name?: string;
+  l5_name?: string;
+  ddd?: string | number;
+  uom?: string;
+  atc_adm_route?: string;
 }
 
 interface DdiResult {
@@ -309,6 +341,15 @@ export function PharmaBrowser() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [adrs, setAdrs] = useState<any[]>([]);
   const [indications, setIndications] = useState<any[]>([]);
+  const [packaging, setPackaging] = useState<{
+    resolved: any;
+    local: any;
+    live: any;
+    hasLive: boolean;
+  } | null>(null);
+  const [packagingView, setPackagingView] = useState<'resolved' | 'local' | 'live'>('resolved');
+  const [liveStatus, setLiveStatus] = useState<{ connected: boolean; error?: string } | null>(null);
+  const [syncingLive, setSyncingLive] = useState(false);
 
   const [selectedForDdi, setSelectedForDdi] = useState<Set<string>>(new Set());
   const [ddiResult, setDdiResult] = useState<DdiResult | null>(null);
@@ -384,6 +425,7 @@ export function PharmaBrowser() {
       setDetail(null);
       setAdrs([]);
       setIndications([]);
+      setPackaging(null);
       return;
     }
 
@@ -409,6 +451,19 @@ export function PharmaBrowser() {
           const indData = await indRes.json();
           setIndications(indData.indications || []);
         }
+
+        // Fetch Packaging (dual source)
+        const pkgRes = await fetch(`/api/pharma/brand/${selectedBrandId}/packaging`);
+        if (pkgRes.ok) {
+          const pkgData = await pkgRes.json();
+          setPackaging(pkgData);
+        }
+
+        // Fetch live DB status (non-blocking)
+        fetch('/api/pharma/packaging/live-status')
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) setLiveStatus(d); })
+          .catch(() => {});
 
       } catch (err) {
         console.error(err);
@@ -722,11 +777,17 @@ export function PharmaBrowser() {
                     {detail.formulary_status}
                   </span>
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm font-arabic tracking-wide mb-3" dir="rtl">
+                <p className="text-gray-500 dark:text-gray-400 text-sm font-arabic tracking-wide mb-2" dir="rtl">
                   {detail.name_ar}
                 </p>
+                <div className="inline-block mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 bg-white border border-slate-200 uppercase tracking-widest rounded px-1.5 py-0.5 shadow-sm">SCD</span>
+                    <span className="text-sm font-bold text-slate-600">{detail.scd_name || 'Not Specified'}</span>
+                  </div>
+                </div>
                 {/* ATTACHED ICONS */}
-                <div className="flex flex-wrap items-center gap-3 mt-2">
+                <div className="flex flex-wrap items-center gap-3">
                   {detail.refrigerated ? (
                     <div title="Refrigerated" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 font-bold text-xs uppercase tracking-wide">
                       <Snowflake className="w-4 h-4" /> Refrigerated
@@ -827,19 +888,66 @@ export function PharmaBrowser() {
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <div className="space-y-6">
                       <IdentityItem label="Medication Code" value={detail.brand_id} source="Medication_Master.Brand_ID" />
-                      <IdentityItem label="HIS Code" value={detail.brand_id} source="Medication_Master.Clinisys_Code" />
+                      <IdentityItem label="HIS Code" value={detail.clinisys_code || 'NA'} source="Medication_Master.Clinisys_Code" />
                       <IdentityItem label="Manufacturer" value={detail.company || 'Unknown'} source="Medication_Master.Company" />
-                      <IdentityItem label="Product Type" value={"Medication"} source="...SCDF_Directory.Product_Type" />
+                      <IdentityItem label="Product Type" value={detail.product_type || 'Medication'} source="SCDF_Directory.Product_Type" />
                       <IdentityItem label="Formulary Status" value={detail.formulary_status} source="Medication_Master.Formulary_Status" isBadge />
                     </div>
                     <div className="space-y-6">
-                      <IdentityItem label="PTC Approval Code" value={"NA"} source="Medication_Master.PTC-Approval ID" />
-                      <IdentityItem label="PTC Approval Date" value={"NA"} source="Medication_Master.PTC Approval Date" />
-                      <IdentityItem label="PTC Approval Level" value={"NA"} source="Medication_Master.PTC Approval Level" />
-                      <IdentityItem label="PSP" value={detail.psp ? 'YES' : 'NO'} source="Medication_Master.PSP" isBadge={false} badgeType={'default'} />
+                      <IdentityItem label="ATC Level 5 Code" value={detail.atc_code || 'NA'} source="ATC Directory.ATC Code" />
+                      <IdentityItem label="SCD Code" value={detail.scd_id || 'NA'} source="SCD_Directory.SCD_ID" />
+                      <IdentityItem label="SCDF Code" value={detail.scdf_id || 'NA'} source="SCDF_Directory.SCDF_ID" />
                     </div>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* PTC APPROVALS SECTION */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+              <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
+                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">PTC Approvals</h3>
+              </div>
+              <div className="p-6">
+                {detail.ptc_approvals && detail.ptc_approvals.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {detail.ptc_approvals.map((ptc, idx) => (
+                      <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-100 rounded-bl-3xl -mr-2 -mt-2 flex items-center justify-center z-0">
+                           <ShieldCheck className="w-5 h-5 text-emerald-600 mb-1 ml-1" />
+                        </div>
+                        <div className="relative z-10 space-y-3">
+                          <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Hospital / PTC Body</span>
+                            <span className="text-sm font-bold text-slate-800">{ptc.hospital_name || 'Unknown'}</span>
+                          </div>
+                          <div className="flex items-center gap-6 pt-2 border-t border-slate-200/60">
+                             <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Code</span>
+                                <span className="text-xs font-semibold text-slate-600">{ptc.ptc_code || 'N/A'}</span>
+                             </div>
+                             <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Date</span>
+                                <span className="text-xs font-semibold text-slate-600">{ptc.ptc_date || 'N/A'}</span>
+                             </div>
+                             <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Level</span>
+                                <span className="text-xs font-semibold text-slate-600">{ptc.ptc_level || 'N/A'}</span>
+                             </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                    <ClipboardCheck className="w-10 h-10 text-slate-400 mb-3" />
+                    <p className="text-sm text-slate-600 font-medium">No hospital-specific PTC approvals documented for this brand.</p>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -950,7 +1058,6 @@ export function PharmaBrowser() {
                     </div>
 
                     {/* Controlled Substance */}
-                    {/* Controlled Substance */}
                     {detail.resolved_controlled && (
                       <div className="group relative h-full">
                         <div className="p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm bg-purple-50 border-purple-200 min-h-[108px] h-full">
@@ -961,6 +1068,21 @@ export function PharmaBrowser() {
                             <Lock className="w-5 h-5 text-purple-600 shrink-0" />
                           </div>
                           <div className="text-xs font-black text-purple-700 uppercase tracking-widest mt-auto pt-2">Controlled Narcotics</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Patient Support Program (PSP) */}
+                    {detail.psp && (
+                      <div className="group relative h-full">
+                        <div className="p-4 rounded-xl border flex flex-col justify-between transition-colors shadow-sm bg-pink-50 border-pink-200 min-h-[108px] h-full">
+                          <div className="flex items-start justify-between w-full">
+                            <span className="text-sm font-bold text-pink-900 max-w-[140px] leading-tight">
+                              Patient Support Program
+                            </span>
+                            <Package className="w-5 h-5 text-pink-600 shrink-0" />
+                          </div>
+                          <div className="text-xs font-black text-pink-700 uppercase tracking-widest mt-auto pt-2">PSP Available</div>
                         </div>
                       </div>
                     )}
@@ -1041,42 +1163,124 @@ export function PharmaBrowser() {
                     <div className="flex flex-col">
                       <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Default Rx Unit:</span>
                     </div>
-                    <span className="text-base font-bold text-slate-800">{detail.scdf_name?.split(' ').pop() || 'Not Specified'}</span>
+                    <span className="text-base font-bold text-slate-800">{detail.default_rx_unit || 'Not Specified'}</span>
                   </div>
                   <div className="flex justify-between items-center group">
                     <div className="flex flex-col">
                       <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Route of Administration:</span>
                     </div>
-                    <span className="text-base font-bold text-slate-800">{detail.scdf_name?.split(' ')[1] || 'Not Specified'}</span>
+                    <span className="text-base font-bold text-slate-800">{detail.default_roa || 'Not Specified'}</span>
                   </div>
                 </div>
               </section>
+              {/* PACKAGING HIERARCHY — dual source: Local + Live */}
               <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full">
-                <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500 flex items-center justify-center">
-                    <Layers className="w-6 h-6" />
+                {/* Header */}
+                <div className="flex items-center justify-between gap-3 p-5 border-b border-slate-100 bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 rounded-lg text-blue-500 flex items-center justify-center">
+                      <Layers className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-800 tracking-tight">Packaging Hierarchy</h3>
+                      {packaging?.hasLive && (
+                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Live Override Active</span>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="font-bold text-xl text-slate-800 tracking-tight">Packaging Hierarchy</h3>
+                  {/* Source toggle + sync button */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs font-bold">
+                      <button
+                        onClick={() => setPackagingView('resolved')}
+                        className={`px-2.5 py-1 rounded-md transition-all ${
+                          packagingView === 'resolved'
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >Resolved</button>
+                      <button
+                        onClick={() => setPackagingView('local')}
+                        className={`px-2.5 py-1 rounded-md transition-all ${
+                          packagingView === 'local'
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >Local</button>
+                      <button
+                        onClick={() => setPackagingView('live')}
+                        className={`px-2.5 py-1 rounded-md transition-all ${
+                          packagingView === 'live'
+                            ? (packaging?.hasLive ? 'bg-emerald-500 text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm')
+                            : (packaging?.hasLive ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-500 hover:text-slate-700')
+                        }`}
+                      >
+                        Live {liveStatus?.connected ? '🟢' : liveStatus ? '🔴' : '⚪'}
+                      </button>
+                    </div>
+                    <button
+                      title="Sync from live HIS database"
+                      disabled={syncingLive || liveStatus?.connected === false}
+                      onClick={async () => {
+                        setSyncingLive(true);
+                        try {
+                          await fetch('/api/pharma/packaging/sync-live', { method: 'POST' });
+                          // Re-fetch packaging after sync
+                          const r = await fetch(`/api/pharma/brand/${selectedBrandId}/packaging`);
+                          if (r.ok) setPackaging(await r.json());
+                        } finally {
+                          setSyncingLive(false);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${syncingLive ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
-                <div className="p-8 space-y-6">
-                  <div className="flex justify-between items-center group">
-                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Major Unit:</span></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-black text-slate-800">NA</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center group">
-                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Med Unit:</span></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-black text-slate-800">NA</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center group">
-                    <div className="flex flex-col"><span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Minor Unit:</span></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-black text-slate-800">NA</span>
-                    </div>
-                  </div>
+
+                {/* Data display */}
+                <div className="p-6 space-y-4">
+                  {(() => {
+                    const src = packagingView === 'live' ? packaging?.live :
+                                packagingView === 'local' ? packaging?.local :
+                                packaging?.resolved;
+
+                    if (!src) {
+                      return (
+                        <div className="text-center py-6 text-slate-400 text-sm">
+                          {packagingView === 'live'
+                            ? liveStatus?.connected === false
+                              ? '🔴 Live database not configured or unreachable.'
+                              : 'No live packaging data synced yet. Click ↻ to sync.'
+                            : 'No packaging data recorded.'}
+                        </div>
+                      );
+                    }
+
+                    const unitRow = (label: string, unit: string | null, qty: string | number | null) => (
+                      <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                        <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">{label}:</span>
+                        <div className="flex items-center gap-2">
+                          {qty != null && <span className="bg-slate-100 text-slate-600 text-xs font-black px-2 py-0.5 rounded-md">×{Number(qty)}</span>}
+                          <span className="text-sm font-black text-slate-800">{unit || <span className="text-slate-300 font-normal">—</span>}</span>
+                        </div>
+                      </div>
+                    );
+
+                    return (
+                      <>
+                        {unitRow('Major Unit', src.major_unit, src.major_unit_qty)}
+                        {unitRow('Med Unit',   src.mid_unit,   src.mid_unit_qty)}
+                        {unitRow('Minor Unit', src.minor_unit, src.minor_unit_qty)}
+                        {src === packaging?.live && packaging?.live?.synced_at && (
+                          <p className="text-[10px] text-slate-400 mt-3 text-right">
+                            Live synced: {new Date(packaging.live.synced_at).toLocaleString()}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </section>
             </div>
@@ -1090,18 +1294,32 @@ export function PharmaBrowser() {
                 <h3 className="font-bold text-xl text-slate-800 tracking-tight">RxNorm-Based Clinical Identity</h3>
               </div>
               <div className="p-8 space-y-8">
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex justify-between items-baseline px-1">
                     <span className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">Ingredient(s), Strength(s), and Strength Unit(s)</span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-inner group">
-                     <span className="text-xl md:text-2xl font-black text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">
-                       {detail.ingredients?.length ? detail.ingredients.map(i => `${i.api} ${i.api_roa || ''}`).join(' / ') : "No ingredients recorded"}
-                     </span>
+                  <div className="flex flex-wrap gap-3">
+                    {detail.ingredients?.length ? (
+                      detail.ingredients.map((i, idx) => (
+                        <div key={idx} className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full shadow-sm">
+                          <FlaskConical className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-bold text-slate-800">
+                            {i.api} {i.api_conc != null ? Number(i.api_conc) : ''} {i.api_conc_unit || ''}
+                          </span>
+                          <span className="px-2 py-0.5 ml-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                            API
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-sm font-bold text-slate-500 px-2">No ingredients recorded</span>
+                    )}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-4">
-                  <ClinicalItem label="Dose Form" value={detail.scdf_name?.split(' ').pop() || 'Not Specified'} source="SCDF_Directory.ROA_DF" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 pt-4 border-t border-slate-100">
+                  <ClinicalItem label="Dose Form" value={detail.roa_df || 'Not Specified'} source="SCDF_Directory.ROA_DF" />
+                  <ClinicalItem label="Dosage Form Group" value={detail.scdf_name?.split(' ').pop() || 'Not Specified'} source="SCDF_Directory.SCDF_Name" />
                   <ClinicalItem label="Semantic Clinical Drug (SCD)" value={detail.scd_name || 'Not Specified'} source="SCD_Directory.SCD" className="text-blue-600" />
                   <ClinicalItem label="Semantic Clinical Drug Form (SCDF)" value={detail.scdf_name || 'Not Specified'} source="SCDF_Directory.SCDF_Name" className="text-blue-600" />
                 </div>
@@ -1116,73 +1334,137 @@ export function PharmaBrowser() {
                 </div>
                 <h3 className="font-bold text-xl text-slate-800 tracking-tight">WHO ATC Classification</h3>
               </div>
-              <div className="p-8">
-                <div className="space-y-3 max-w-4xl">
-                  <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
-                    <span className="bg-blue-200 text-blue-700 text-[10px] font-black px-2 py-1.5 rounded-md min-w-[50px] text-center">{detail.atc_code || 'N/A'}</span>
-                    <span className="text-base font-black text-blue-800">{'Pharmacological Class'}</span>
+              <div className="p-6 md:p-8">
+                <div className="space-y-4">
+                  {/* Layer 1 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
+                    <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l1_code || 'N/A'}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Anatomical Main Group (Level 1)</span>
+                      <span className="text-sm font-bold text-slate-800">{detail.l1_name || 'Not Specified'}</span>
+                    </div>
                   </div>
+                  {/* Layer 2 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-4">
+                    <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l2_code || 'N/A'}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Therapeutic Main Group (Level 2)</span>
+                      <span className="text-sm font-bold text-slate-800">{detail.l2_name || 'Not Specified'}</span>
+                    </div>
+                  </div>
+                  {/* Layer 3 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-8">
+                    <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l3_code || 'N/A'}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pharmacological Subgroup (Level 3)</span>
+                      <span className="text-sm font-bold text-slate-800">{detail.l3_name || 'Not Specified'}</span>
+                    </div>
+                  </div>
+                  {/* Layer 4 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm ml-0 sm:ml-12">
+                    <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[50px] text-center border border-slate-300">{detail.l4_code || 'N/A'}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chemical/Therapeutic Subgroup (Level 4)</span>
+                      <span className="text-sm font-bold text-slate-800">{detail.l4_name || 'Not Specified'}</span>
+                    </div>
+                  </div>
+                  {/* Layer 5 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm ml-0 sm:ml-16">
+                    <span className="bg-blue-600 text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[70px] text-center shadow-inner">{detail.atc_code || 'N/A'}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Chemical Substance (Level 5)</span>
+                      <span className="text-base font-black text-blue-900">{detail.l5_name || detail.name_en}</span>
+                    </div>
+                  </div>
+                  
+                  {/* DDD Info */}
+                  {(detail.ddd || detail.atc_adm_route) && (
+                    <div className="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Defined Daily Dose (DDD)</span>
+                         <span className="text-lg font-black text-slate-700">{detail.ddd ? `${detail.ddd} ${detail.uom || ''}` : 'N/A'}</span>
+                       </div>
+                       <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Final ROA</span>
+                         <span className="text-lg font-black text-slate-700">{detail.atc_adm_route || 'N/A'}</span>
+                       </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* SECTION 7: CLINICAL INFORMATION (TABS) */}
+            {/* SECTION 7: CDSS & CLINICAL MONOGRAPH */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
               <div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-slate-50">
                 <div className="p-2 bg-indigo-50 rounded-lg text-indigo-500 flex items-center justify-center">
-                  <Info className="w-6 h-6" />
+                  <BrainCircuit className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-xl text-slate-800 tracking-tight">Clinical Information</h3>
+                <h3 className="font-bold text-xl text-slate-800 tracking-tight">CDSS & Clinical Monograph</h3>
               </div>
               
-              {/* Tabs Navigation */}
-              <div className="flex border-b border-slate-100">
-                <button onClick={() => setActiveTab('indications')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'indications' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Clinical Indications</button>
-                <button onClick={() => setActiveTab('adr')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'adr' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Adverse Drug Reactions</button>
-                <button onClick={() => setActiveTab('ddi')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'ddi' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Drug-Drug Interactions</button>
-              </div>
+              {detail.rxcui && /^\d+$/.test(detail.rxcui) ? (
+                <>
+                  {/* Tabs Navigation */}
+                  <div className="flex border-b border-slate-100">
+                    <button onClick={() => setActiveTab('indications')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'indications' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Clinical Indications</button>
+                    <button onClick={() => setActiveTab('adr')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'adr' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Adverse Drug Reactions</button>
+                    <button onClick={() => setActiveTab('ddi')} className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'ddi' ? 'text-indigo-600 border-indigo-600 bg-indigo-50/30' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>Drug-Drug Interactions</button>
+                  </div>
 
-              <div className="p-6">
-                {activeTab === 'indications' && (
-                  <div className="space-y-10 animate-fadeIn">
-                    {indicationsByAPI.map((group, idx) => (
-                      <div key={idx} className="space-y-4">
-                        <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                          <div className="w-2 h-6 bg-indigo-400 rounded-full"></div>
-                          <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
-                          <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
-                        </div>
-                        <div className="space-y-3">
-                          {group.indications.map((ind: any, iIdx: number) => <IndicationRow key={iIdx} indication={ind} />)}
-                        </div>
+                  <div className="p-6">
+                    {activeTab === 'indications' && (
+                      <div className="space-y-10 animate-fadeIn">
+                        {indicationsByAPI.map((group, idx) => (
+                          <div key={idx} className="space-y-4">
+                            <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                              <div className="w-2 h-6 bg-indigo-400 rounded-full"></div>
+                              <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                              <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Active Ingredient)</span>
+                            </div>
+                            <div className="space-y-3">
+                              {group.indications.map((ind: any, iIdx: number) => <IndicationRow key={iIdx} indication={ind} />)}
+                            </div>
+                          </div>
+                        ))}
+                        {indicationsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No specific indications found.</p>}
                       </div>
-                    ))}
-                    {indicationsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No specific indications found.</p>}
-                  </div>
-                )}
-                {activeTab === 'adr' && (
-                  <div className="space-y-10 animate-fadeIn">
-                    {adrsByAPI.map((group, idx) => (
-                      <div key={idx} className="space-y-4">
-                        <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-                          <div className="w-2 h-6 bg-rose-400 rounded-full"></div>
-                          <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
-                          <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Side Effect Profile)</span>
-                        </div>
-                        <div className="space-y-3">
-                          {group.adrs.map((adr: any, aIdx: number) => <ADRRow key={aIdx} adr={adr} />)}
-                        </div>
+                    )}
+                    {activeTab === 'adr' && (
+                      <div className="space-y-10 animate-fadeIn">
+                        {adrsByAPI.map((group, idx) => (
+                          <div key={idx} className="space-y-4">
+                            <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                              <div className="w-2 h-6 bg-rose-400 rounded-full"></div>
+                              <h4 className="text-base font-black text-slate-700 tracking-tight uppercase">{group.api}</h4>
+                              <span className="text-[10px] text-slate-400 font-mono ml-auto uppercase opacity-50">API (Side Effect Profile)</span>
+                            </div>
+                            <div className="space-y-3">
+                              {group.adrs.map((adr: any, aIdx: number) => <ADRRow key={aIdx} adr={adr} />)}
+                            </div>
+                          </div>
+                        ))}
+                        {adrsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No adverse reactions logged.</p>}
                       </div>
-                    ))}
-                    {adrsByAPI.length === 0 && <p className="text-slate-500 text-center py-8">No adverse reactions logged.</p>}
+                    )}
+                    {activeTab === 'ddi' && (
+                      <div className="space-y-10 animate-fadeIn">
+                        <p className="text-slate-500 text-center py-8">Use the global DDI Checker engine at the top of the browser to evaluate interactions.</p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {activeTab === 'ddi' && (
-                  <div className="space-y-10 animate-fadeIn">
-                    <p className="text-slate-500 text-center py-8">Use the global DDI Checker engine at the top of the browser to evaluate interactions.</p>
+                </>
+              ) : (
+                <div className="p-12 flex flex-col items-center justify-center text-center bg-slate-50/50">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <ShieldAlert className="w-8 h-8 text-slate-400" />
                   </div>
-                )}
-              </div>
+                  <h4 className="text-lg font-bold text-slate-700 mb-2">Virtual SCDF Detected</h4>
+                  <p className="text-sm text-slate-500 max-w-md">
+                    This medication is mapped to a Virtual SCDF (RxNorm ID: <strong>{detail.rxcui || 'None'}</strong>). Because this is a localized variant and not an exact 1:1 international RxNorm match, CDSS interactions and clinical monographs are intentionally disabled for clinical safety.
+                  </p>
+                </div>
+              )}
             </section>
 
             {/* FINAL SECTION: LEGAL DOCUMENTS */}
@@ -1274,6 +1556,14 @@ const ADRRow: React.FC<{ adr: any }> = ({ adr }) => {
         </div>
         <span className="px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-rose-50 text-rose-700 border-rose-100">{adr.frequency_label || 'Not Specified'}</span>
       </div>
+      {isExpanded && (
+        <div className="p-4 pt-0 border-t border-slate-100 bg-white">
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <ExpandedItem label="Frequency – lower bound" value={adr.freq_lower !== null && adr.freq_lower !== undefined ? `${adr.freq_lower}` : null} />
+            <ExpandedItem label="Frequency – upper bound" value={adr.freq_upper !== null && adr.freq_upper !== undefined ? `${adr.freq_upper}` : null} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1287,8 +1577,19 @@ const IndicationRow: React.FC<{ indication: any }> = ({ indication }) => {
           <ChevronRight className={`w-5 h-5 transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-90 text-rose-500" : ""}`} />
           <span className="font-bold text-slate-700">{indication.indication_text || 'General Use'}</span>
         </div>
-        <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-100`}>{indication.indication_type?.replace(/_/g, ' ') || 'Unknown'}</span>
+        <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-100`}>{indication.approval_level || 'Unknown'}</span>
       </div>
+      {isExpanded && (
+        <div className="p-4 pt-0 border-t border-slate-100 bg-white">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3">
+            <ExpandedItem label="Indication Type" value={indication.indication_type?.replace(/_/g, ' ')} />
+            <ExpandedItem label="Combined Product Details" value={indication.combined_product} />
+            <ExpandedItem label="Age Group" value={indication.age_group} />
+            <ExpandedItem label="Patient Characteristics" value={indication.patient_chars} />
+            <ExpandedItem label="Dose Form" value={indication.dose_form} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

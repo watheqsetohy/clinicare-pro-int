@@ -1459,27 +1459,65 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
   try {
     const { rxcui } = req.params;
 
-    // ── Step 1: Resolve SCD → IN (ingredient) + SCDF (dose form) ──
-    const inResult = await query(`
-      SELECT DISTINCT r2.rxcui2 as in_rxcui, c.name as in_name
-      FROM rxnorm_relationship r1
-      JOIN rxnorm_relationship r2 ON r2.rxcui1 = r1.rxcui1 AND r2.rela = 'ingredient_of' AND r2.sab = 'RXNORM'
-      JOIN rxnorm_concept c ON c.rxcui = r2.rxcui2 AND c.sab = 'RXNORM' AND c.tty = 'IN'
-      WHERE r1.rxcui2 = $1 AND r1.rela = 'consists_of' AND r1.sab = 'RXNORM'
-    `, [rxcui]);
-    const inRxcuis = inResult.rows.map((r: any) => r.in_rxcui);
-    const ingredientName = inResult.rows[0]?.in_name || null;
+    // ── Step 1: Resolve SCD/SCDF/SBD/SBDF → IN (ingredient) + SCDF (dose form) ──
+    const conceptRes = await query(`SELECT tty, name FROM rxnorm_concept WHERE rxcui = $1 AND sab = 'RXNORM'`, [rxcui]);
+    const tty = conceptRes.rows[0]?.tty;
+    const conceptName = conceptRes.rows[0]?.name;
 
-    // Resolve SCDF (e.g., "ciprofloxacin Oral Tablet") via inverse_isa
-    const scdfResult = await query(`
-      SELECT r.rxcui2 as scdf_rxcui, c.name as scdf_name
-      FROM rxnorm_relationship r
-      JOIN rxnorm_concept c ON c.rxcui = r.rxcui2 AND c.sab = 'RXNORM' AND c.tty = 'SCDF'
-      WHERE r.rxcui1 = $1 AND r.rela = 'inverse_isa' AND r.sab = 'RXNORM'
-      LIMIT 1
-    `, [rxcui]);
-    const scdfRxcui = scdfResult.rows[0]?.scdf_rxcui;
-    const scdfName = scdfResult.rows[0]?.scdf_name || null;
+    let inRxcuis: string[] = [];
+    let ingredientName: string | null = null;
+    let scdfRxcui: string | null = null;
+    let scdfName: string | null = null;
+
+    if (tty === 'SCDF' || tty === 'SBDF') {
+      scdfRxcui = rxcui;
+      scdfName = conceptName;
+
+      // SCDF has 'has_ingredient' to IN
+      const inResult = await query(`
+        SELECT DISTINCT r.rxcui2 as in_rxcui, c.name as in_name
+        FROM rxnorm_relationship r
+        JOIN rxnorm_concept c ON c.rxcui = r.rxcui2 AND c.sab = 'RXNORM' AND c.tty = 'IN'
+        WHERE r.rxcui1 = $1 AND r.rela = 'has_ingredient' AND r.sab = 'RXNORM'
+      `, [rxcui]);
+      inRxcuis = inResult.rows.map((r: any) => r.in_rxcui);
+      ingredientName = inResult.rows[0]?.in_name || null;
+    } else {
+      // SCD or SBD — consists_of points to IN, inverse_isa points to SCDF
+      const inResult = await query(`
+        SELECT DISTINCT r2.rxcui2 as in_rxcui, c.name as in_name
+        FROM rxnorm_relationship r1
+        JOIN rxnorm_relationship r2 ON r2.rxcui1 = r1.rxcui1 AND r2.rela = 'ingredient_of' AND r2.sab = 'RXNORM'
+        JOIN rxnorm_concept c ON c.rxcui = r2.rxcui2 AND c.sab = 'RXNORM' AND c.tty = 'IN'
+        WHERE r1.rxcui2 = $1 AND r1.rela = 'consists_of' AND r1.sab = 'RXNORM'
+      `, [rxcui]);
+      
+      // Fallback: direct 'has_ingredient' if consists_of fails (sometimes RxNorm uses has_ingredient for SCD)
+      if (inResult.rows.length === 0) {
+        const fallback = await query(`
+          SELECT DISTINCT r.rxcui2 as in_rxcui, c.name as in_name
+          FROM rxnorm_relationship r
+          JOIN rxnorm_concept c ON c.rxcui = r.rxcui2 AND c.sab = 'RXNORM' AND c.tty = 'IN'
+          WHERE r.rxcui1 = $1 AND r.rela = 'has_ingredient' AND r.sab = 'RXNORM'
+        `, [rxcui]);
+        inRxcuis = fallback.rows.map((r: any) => r.in_rxcui);
+        ingredientName = fallback.rows[0]?.in_name || null;
+      } else {
+        inRxcuis = inResult.rows.map((r: any) => r.in_rxcui);
+        ingredientName = inResult.rows[0]?.in_name || null;
+      }
+
+      // Resolve SCDF
+      const scdfResult = await query(`
+        SELECT r.rxcui2 as scdf_rxcui, c.name as scdf_name
+        FROM rxnorm_relationship r
+        JOIN rxnorm_concept c ON c.rxcui = r.rxcui2 AND c.sab = 'RXNORM' AND c.tty IN ('SCDF', 'SBDF')
+        WHERE r.rxcui1 = $1 AND r.rela = 'inverse_isa' AND r.sab = 'RXNORM'
+        LIMIT 1
+      `, [rxcui]);
+      scdfRxcui = scdfResult.rows[0]?.scdf_rxcui;
+      scdfName = scdfResult.rows[0]?.scdf_name || null;
+    }
 
     // ── Step 2: Gather sibling SCDs scoped by DOSE FORM (SCDF) ──
     // Only include siblings sharing the same dose form (e.g., Oral Tablet, not Otic Solution)

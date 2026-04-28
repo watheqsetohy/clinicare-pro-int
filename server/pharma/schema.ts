@@ -230,12 +230,15 @@ export async function initPharmaSchema() {
       scdf_id         VARCHAR(500) UNIQUE NOT NULL,
       scdf_name       TEXT,
       roa_df_code     VARCHAR(255),
+      roa_df          TEXT,
       atc_code        VARCHAR(20),
       atc_ddd_id      VARCHAR(100),
       light_protection       BOOLEAN DEFAULT FALSE,
       light_protection_level TEXT,
       product_type    TEXT,
       rxcui           TEXT,
+      default_rx_unit TEXT,
+      default_roa     TEXT,
       batch_id        INT REFERENCES pharma.import_batch(id)
     );
 
@@ -339,6 +342,56 @@ export async function initPharmaSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_brand_scd ON pharma.brand(scd_id);
     CREATE INDEX IF NOT EXISTS idx_brand_name ON pharma.brand(name_en);
+
+    CREATE TABLE IF NOT EXISTS pharma.ptc_approval (
+      id              SERIAL PRIMARY KEY,
+      brand_id        VARCHAR(258) REFERENCES pharma.brand(brand_id) ON DELETE CASCADE,
+      hospital_name   TEXT NOT NULL,
+      ptc_code        TEXT,
+      ptc_date        TEXT,
+      ptc_level       TEXT,
+      batch_id        INT REFERENCES pharma.import_batch(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ptc_brand ON pharma.ptc_approval(brand_id);
+  `);
+
+  // =============================================
+  // LAYER 3b — PACKAGING HIERARCHY
+  // =============================================
+  await pool.query(`
+    -- Dual-source packaging: 'local' (Medication Master Excel) + 'live' (HIS/live DB)
+    -- 'live' rows override 'local' when displayed in the UI.
+    CREATE TABLE IF NOT EXISTS pharma.brand_packaging (
+      id              SERIAL PRIMARY KEY,
+      brand_id        VARCHAR(258) NOT NULL REFERENCES pharma.brand(brand_id) ON DELETE CASCADE,
+      source          VARCHAR(20)  NOT NULL DEFAULT 'local', -- 'local' | 'live'
+      major_unit      VARCHAR(150),
+      major_unit_qty  NUMERIC(18,3),
+      mid_unit        VARCHAR(150),
+      mid_unit_qty    NUMERIC(18,3),
+      minor_unit      VARCHAR(150),
+      minor_unit_qty  NUMERIC(18,3),
+      synced_at       TIMESTAMPTZ  DEFAULT NOW(),
+      created_at      TIMESTAMPTZ  DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ  DEFAULT NOW(),
+      UNIQUE (brand_id, source)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pkg_brand  ON pharma.brand_packaging(brand_id);
+    CREATE INDEX IF NOT EXISTS idx_pkg_source ON pharma.brand_packaging(source);
+
+    -- Audit log for live sync operations
+    CREATE TABLE IF NOT EXISTS pharma.live_sync_log (
+      id              SERIAL PRIMARY KEY,
+      sync_type       VARCHAR(50)  NOT NULL, -- 'packaging', 'full', etc.
+      triggered_by    VARCHAR(100),
+      records_synced  INT          DEFAULT 0,
+      status          VARCHAR(20)  DEFAULT 'pending', -- 'pending'|'running'|'done'|'error'
+      error_msg       TEXT,
+      started_at      TIMESTAMPTZ  DEFAULT NOW(),
+      completed_at    TIMESTAMPTZ
+    );
   `);
 
   // =============================================
@@ -518,6 +571,12 @@ export async function initPharmaSchema() {
       b.upper_temp,
       b.psp,
       b.market_shortage,
+      b.major_unit,
+      b.major_unit_qty,
+      b.mid_unit,
+      b.mid_unit_qty,
+      b.minor_unit,
+      b.minor_unit_qty,
       s.scd_name,
       s.has_strength,
       s.concentration,
@@ -529,20 +588,24 @@ export async function initPharmaSchema() {
       sf.light_protection AS scdf_light_protection,
       sf.light_protection_level,
       sf.product_type,
-      -- Aggregated ingredients via SCDF_IN
+      sf.default_rx_unit,
+      sf.default_roa,
+      -- Aggregated ingredients via SCD_IN
       (SELECT json_agg(json_build_object(
         'api', si.api,
+        'api_conc', si.api_conc,
+        'api_conc_unit', si.api_conc_unit,
         'api_roa', si.api_roa_ref,
         'ir_id', si.ingredient_route_id,
-        'rank', si.rank
-      ) ORDER BY si.rank)
-      FROM pharma.scdf_ingredient si
-      WHERE si.scdf_id = sf.scdf_id
+        'rank', si.in_rank
+      ) ORDER BY si.in_rank)
+      FROM pharma.scd_ingredient si
+      WHERE si.scd_id = s.scd_id
       ) AS ingredients,
       -- Ingredient count
       (SELECT COUNT(*)
-       FROM pharma.scdf_ingredient si
-       WHERE si.scdf_id = sf.scdf_id
+       FROM pharma.scd_ingredient si
+       WHERE si.scd_id = s.scd_id
       ) AS ingredient_count
     FROM pharma.brand b
     LEFT JOIN pharma.scd s ON s.scd_id = b.scd_id
@@ -572,6 +635,7 @@ export async function initPharmaSchema() {
       b.name_en,
       b.name_ar,
       b.scd_id,
+      b.clinisys_code,
       b.formulary_status,
       b.company,
       b.his_coded,
@@ -630,6 +694,10 @@ export async function initPharmaSchema() {
       sf.atc_code,
       a.controlled AS resolved_controlled,
       sf.product_type,
+      sf.default_rx_unit,
+      sf.default_roa,
+      sf.roa_df,
+      sf.rxcui,
       s.concentration,
       s.unit AS conc_unit,
       s.has_strength,
