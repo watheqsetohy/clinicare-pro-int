@@ -1778,9 +1778,17 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
         const parentMap = new Map<string, any>();
         const rootSections: any[] = [];
 
+        // Canonical parent titles for synthetic nodes
+        const PARENT_TITLES: Record<string, string> = {
+          '8': 'USE IN SPECIFIC POPULATIONS', '9': 'DRUG ABUSE AND DEPENDENCE',
+          '12': 'CLINICAL PHARMACOLOGY', '13': 'NONCLINICAL TOXICOLOGY',
+        };
+
         for (const sec of splSections.rows) {
-          // Clean section titles (remove extra whitespace/newlines)
-          const cleanTitle = (sec.section_title || '').replace(/\s+/g, ' ').trim();
+          // Clean title: strip leading section number + whitespace
+          let cleanTitle = (sec.section_title || '').replace(/\s+/g, ' ').trim();
+          // Remove leading "12.1 " or "8 " prefix since we show §num in badge
+          cleanTitle = cleanTitle.replace(/^\d+(\.\d+)?\s+/, '');
 
           const node = {
             sectionNumber: sec.section_number,
@@ -1794,17 +1802,28 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
           parentMap.set(sec.section_number, node);
 
           if (sec.parent_loinc) {
-            const parent = parentMap.get(sec.parent_loinc);
-            if (parent) {
-              parent.children.push(node);
-            } else {
-              rootSections.push(node);
+            let parent = parentMap.get(sec.parent_loinc);
+            if (!parent) {
+              // Create synthetic parent (e.g., §9 when only §9.2 exists)
+              parent = {
+                sectionNumber: sec.parent_loinc,
+                title: PARENT_TITLES[sec.parent_loinc] || `Section ${sec.parent_loinc}`,
+                html: '',
+                parentLoinc: null,
+                sortOrder: sec.sort_order - 0.5,
+                children: [],
+              };
+              parentMap.set(sec.parent_loinc, parent);
+              rootSections.push(parent);
             }
+            parent.children.push(node);
           } else {
             rootSections.push(node);
           }
         }
 
+        // Sort root sections by sortOrder
+        rootSections.sort((a, b) => a.sortOrder - b.sortOrder);
         fdaSections = rootSections;
       }
     } catch (splErr) {
