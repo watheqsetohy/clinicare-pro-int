@@ -88,6 +88,8 @@ export function RxNormBrowser({
   const [monographLoading, setMonographLoading] = useState(false);
   const [activeTab, setActiveTab]           = useState<'overview' | 'relations' | 'attributes' | 'cdss' | 'monograph'>('overview');
   const [jumpListOpen, setJumpListOpen]     = useState(false);
+  const [monographSearchOpen, setMonographSearchOpen] = useState(false);
+  const [monographSearchQuery, setMonographSearchQuery] = useState("");
 
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
@@ -432,11 +434,25 @@ export function RxNormBrowser({
                   ))}
                 </div>
 
-                {/* Jump List Toggle Button (only when monograph is active and has sections) */}
+                {/* Jump List & Search Toggle (only when monograph is active and has sections) */}
                 {activeTab === 'monograph' && monograph?.fdaSections?.length > 0 && (
-                  <div className="relative flex items-center">
+                  <div className="relative flex items-center gap-1">
+                    
+                    {/* Search Button */}
                     <button
-                      onClick={() => setJumpListOpen(!jumpListOpen)}
+                      onClick={() => { setMonographSearchOpen(!monographSearchOpen); setJumpListOpen(false); }}
+                      className={cn(
+                        "p-2 rounded-md transition-colors hover:bg-slate-100",
+                        monographSearchOpen ? "bg-slate-100 text-blue-700" : "text-slate-500"
+                      )}
+                      title="Search in Monograph"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+                    
+                    {/* Jump List Toggle Button */}
+                    <button
+                      onClick={() => { setJumpListOpen(!jumpListOpen); setMonographSearchOpen(false); }}
                       className={cn(
                         "p-2 rounded-md transition-colors hover:bg-slate-100",
                         jumpListOpen ? "bg-slate-100 text-emerald-700" : "text-slate-500"
@@ -445,6 +461,93 @@ export function RxNormBrowser({
                     >
                       <Menu className="w-5 h-5" />
                     </button>
+
+                    {/* Search Dropdown */}
+                    {monographSearchOpen && (
+                      <div className="absolute top-full right-0 mt-1 w-96 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-[70vh] flex flex-col overflow-hidden">
+                        <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                          <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="text"
+                              autoFocus
+                              placeholder="Search in FDA monograph..."
+                              value={monographSearchQuery}
+                              onChange={(e) => setMonographSearchQuery(e.target.value)}
+                              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow"
+                            />
+                          </div>
+                        </div>
+                        <div className="overflow-y-auto p-2">
+                          {monographSearchQuery.trim().length < 3 ? (
+                            <div className="p-4 text-center text-xs text-slate-400">Type at least 3 characters to search...</div>
+                          ) : (() => {
+                            const q = monographSearchQuery.trim().toLowerCase();
+                            const results = monograph.fdaSections.map((sec: any) => {
+                              const rawText = (sec.html || '').replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ');
+                              const lowerText = rawText.toLowerCase();
+                              const idx = lowerText.indexOf(q);
+                              if (idx !== -1 || sec.title.toLowerCase().includes(q)) {
+                                let snippet = '';
+                                if (idx !== -1) {
+                                  const start = Math.max(0, idx - 40);
+                                  const end = Math.min(rawText.length, idx + q.length + 40);
+                                  snippet = rawText.substring(start, end);
+                                  if (start > 0) snippet = '...' + snippet;
+                                  if (end < rawText.length) snippet = snippet + '...';
+                                }
+                                return { sec, snippet, idx };
+                              }
+                              return null;
+                            }).filter(Boolean);
+
+                            if (results.length === 0) {
+                              return <div className="p-4 text-center text-xs text-slate-400">No matches found.</div>;
+                            }
+
+                            return results.map(({ sec, snippet, idx }: any, i: number) => {
+                              const isBoxed = sec.sectionNumber === '0';
+                              return (
+                                <button key={i}
+                                  onClick={() => {
+                                    setMonographSearchOpen(false);
+                                    // small delay to let UI close then scroll
+                                    setTimeout(() => {
+                                      const el = document.getElementById(`fda-sec-${sec.sectionNumber}`);
+                                      if (el) {
+                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        // expand if it's a details element
+                                        if (el.tagName === 'DETAILS') el.setAttribute('open', 'true');
+                                      }
+                                    }, 50);
+                                  }}
+                                  className="w-full text-left p-3 mb-1 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100 block"
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={cn("text-[10px] font-mono font-bold", isBoxed ? "text-red-500" : "text-blue-600")}>
+                                      {isBoxed ? '⚠ §0' : `§${sec.sectionNumber}`}
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-800 line-clamp-1">{sec.title}</span>
+                                  </div>
+                                  {snippet ? (
+                                    <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                                      {/* Highlight the match if we want, or just show text */}
+                                      {snippet.split(new RegExp(`(${monographSearchQuery.trim()})`, 'gi')).map((part: string, k: number) => 
+                                        part.toLowerCase() === monographSearchQuery.trim().toLowerCase() 
+                                          ? <span key={k} className="bg-yellow-200 text-yellow-900 font-semibold px-0.5 rounded">{part}</span> 
+                                          : <span key={k}>{part}</span>
+                                      )}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[10px] text-slate-400 italic">Matched in title</p>
+                                  )}
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Jump List Dropdown */}
                     {jumpListOpen && (
