@@ -193,6 +193,7 @@ export async function initPharmaSchema() {
       pregnancy_alarm       BOOLEAN DEFAULT FALSE,
       pregnancy_note        TEXT,
       older_adult_flag      BOOLEAN DEFAULT FALSE,
+      geriatric_alarm       TEXT,
       curator_id            TEXT,
       reviewed_by           TEXT,
       approved_by           TEXT,
@@ -219,6 +220,63 @@ export async function initPharmaSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_ircr_one_active
       ON pharma.ir_clinical_rule(ingredient_route_id)
       WHERE is_active = TRUE AND approval_status = 'Approved';
+  `);
+
+  // Add geriatric_alarm column if missing (idempotent)
+  await pool.query(`
+    DO $$ BEGIN
+      ALTER TABLE pharma.ir_clinical_rule ADD COLUMN IF NOT EXISTS geriatric_alarm TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+
+  // =============================================
+  // LAYER 2b — DOSE ADJUSTMENT RANGE TABLES
+  // =============================================
+  // These are linked via api_roa_dose_adj (from scdf_ingredient)
+  // and provide structured CrCl/Child-Pugh/BMI ranges for CDSS
+
+  await pool.query(`
+    -- Renal Dose Adjustment Ranges
+    -- Dual-purpose: CrCl range rows (esrd=FALSE) + dialysis-specific rows (esrd=TRUE)
+    CREATE TABLE IF NOT EXISTS pharma.renal_dose_adj (
+      id                    SERIAL PRIMARY KEY,
+      api_roa_dose_adj      VARCHAR(255) NOT NULL,
+      lower_crcl            NUMERIC(6,2),
+      upper_crcl            NUMERIC(6,2),
+      esrd                  BOOLEAN DEFAULT FALSE,
+      dialysis_snomed_cui   TEXT,
+      dialysis_code         TEXT,
+      recommendation        TEXT,
+      batch_id              INT REFERENCES pharma.import_batch(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_renal_adj_key
+      ON pharma.renal_dose_adj(api_roa_dose_adj);
+
+    -- Hepatic Dose Adjustment (Child-Pugh class)
+    CREATE TABLE IF NOT EXISTS pharma.hepatic_dose_adj (
+      id                    SERIAL PRIMARY KEY,
+      api_roa_dose_adj      VARCHAR(255) NOT NULL,
+      child_pugh_cutoff     VARCHAR(5) NOT NULL,
+      recommendation        TEXT,
+      batch_id              INT REFERENCES pharma.import_batch(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hepatic_adj_key
+      ON pharma.hepatic_dose_adj(api_roa_dose_adj);
+
+    -- Obesity Dose Adjustment (BMI-based)
+    CREATE TABLE IF NOT EXISTS pharma.obesity_dose_adj (
+      id                    SERIAL PRIMARY KEY,
+      api_roa_dose_adj      VARCHAR(255) NOT NULL,
+      bmi_cutoff            NUMERIC(5,1),
+      recommendation        TEXT,
+      batch_id              INT REFERENCES pharma.import_batch(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_obesity_adj_key
+      ON pharma.obesity_dose_adj(api_roa_dose_adj);
   `);
 
   // =============================================
@@ -669,6 +727,7 @@ export async function initPharmaSchema() {
       cr.pregnancy_alarm      AS resolved_pregnancy_alarm,
       cr.pregnancy_note,
       cr.older_adult_flag     AS resolved_older_adult,
+      cr.geriatric_alarm,
       -- Brand-only fields (no inheritance needed)
       b.lasa,
       b.lasa_code,
