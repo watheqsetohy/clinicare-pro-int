@@ -483,67 +483,105 @@ export function RxNormBrowser({
                             <div className="p-4 text-center text-xs text-slate-400">Type at least 3 characters to search...</div>
                           ) : (() => {
                             const q = monographSearchQuery.trim().toLowerCase();
-                            const results = monograph.fdaSections.map((sec: any) => {
+                            const qEscaped = monographSearchQuery.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            
+                            // Flatten all sections recursively (root + children + grandchildren)
+                            const flatSections: { sec: any; rootSec: any }[] = [];
+                            const flatten = (sec: any, rootSec: any) => {
+                              flatSections.push({ sec, rootSec });
+                              if (sec.children) sec.children.forEach((c: any) => flatten(c, rootSec));
+                            };
+                            monograph.fdaSections.forEach((s: any) => flatten(s, s));
+
+                            // Search across ALL flattened sections: find every occurrence in each
+                            const allHits: { sec: any; rootSec: any; snippet: string; matchType: 'title' | 'content' }[] = [];
+                            
+                            for (const { sec, rootSec } of flatSections) {
+                              // Title match
+                              if (sec.title?.toLowerCase().includes(q)) {
+                                allHits.push({ sec, rootSec, snippet: '', matchType: 'title' });
+                              }
+                              // Content matches — find ALL occurrences
                               const rawText = (sec.html || '').replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ');
                               const lowerText = rawText.toLowerCase();
-                              const idx = lowerText.indexOf(q);
-                              if (idx !== -1 || sec.title.toLowerCase().includes(q)) {
-                                let snippet = '';
-                                if (idx !== -1) {
-                                  const start = Math.max(0, idx - 40);
-                                  const end = Math.min(rawText.length, idx + q.length + 40);
-                                  snippet = rawText.substring(start, end);
-                                  if (start > 0) snippet = '...' + snippet;
-                                  if (end < rawText.length) snippet = snippet + '...';
-                                }
-                                return { sec, snippet, idx };
+                              let searchStart = 0;
+                              while (searchStart < lowerText.length) {
+                                const idx = lowerText.indexOf(q, searchStart);
+                                if (idx === -1) break;
+                                const ctxStart = Math.max(0, idx - 60);
+                                const ctxEnd = Math.min(rawText.length, idx + q.length + 60);
+                                let snippet = rawText.substring(ctxStart, ctxEnd);
+                                if (ctxStart > 0) snippet = '...' + snippet;
+                                if (ctxEnd < rawText.length) snippet = snippet + '...';
+                                allHits.push({ sec, rootSec, snippet, matchType: 'content' });
+                                searchStart = idx + q.length; // move past this match
                               }
-                              return null;
-                            }).filter(Boolean);
+                            }
 
-                            if (results.length === 0) {
+                            if (allHits.length === 0) {
                               return <div className="p-4 text-center text-xs text-slate-400">No matches found.</div>;
                             }
 
-                            return results.map(({ sec, snippet, idx }: any, i: number) => {
-                              const isBoxed = sec.sectionNumber === '0';
-                              return (
-                                <button key={i}
-                                  onClick={() => {
-                                    setMonographSearchOpen(false);
-                                    // small delay to let UI close then scroll
-                                    setTimeout(() => {
-                                      const el = document.getElementById(`fda-sec-${sec.sectionNumber}`);
-                                      if (el) {
-                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        // expand if it's a details element
-                                        if (el.tagName === 'DETAILS') el.setAttribute('open', 'true');
-                                      }
-                                    }, 50);
-                                  }}
-                                  className="w-full text-left p-3 mb-1 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100 block"
-                                >
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={cn("text-[10px] font-mono font-bold", isBoxed ? "text-red-500" : "text-blue-600")}>
-                                      {isBoxed ? '⚠ §0' : `§${sec.sectionNumber}`}
-                                    </span>
-                                    <span className="text-xs font-semibold text-slate-800 line-clamp-1">{sec.title}</span>
-                                  </div>
-                                  {snippet ? (
-                                    <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
-                                      {/* Highlight the match if we want, or just show text */}
-                                      {snippet.split(new RegExp(`(${monographSearchQuery.trim()})`, 'gi')).map((part: string, k: number) => 
-                                        part.toLowerCase() === monographSearchQuery.trim().toLowerCase() 
-                                          ? <span key={k} className="bg-yellow-200 text-yellow-900 font-semibold px-0.5 rounded">{part}</span> 
-                                          : <span key={k}>{part}</span>
-                                      )}
-                                    </p>
-                                  ) : (
-                                    <p className="text-[10px] text-slate-400 italic">Matched in title</p>
-                                  )}
-                                </button>
-                              );
-                            });
+                            // Group hits by rootSec.sectionNumber for display
+                            const grouped = new Map<string, { rootSec: any; hits: typeof allHits }>();
+                            for (const hit of allHits) {
+                              const key = hit.rootSec.sectionNumber;
+                              if (!grouped.has(key)) grouped.set(key, { rootSec: hit.rootSec, hits: [] });
+                              grouped.get(key)!.hits.push(hit);
+                            }
+
+                            return (
+                              <>
+                                <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 border-b border-slate-100 mb-1">
+                                  {allHits.length} match{allHits.length !== 1 ? 'es' : ''} in {grouped.size} section{grouped.size !== 1 ? 's' : ''}
+                                </div>
+                                {[...grouped.entries()].map(([key, { rootSec, hits }]) => {
+                                  const isBoxed = rootSec.sectionNumber === '0';
+                                  return (
+                                    <div key={key} className="mb-2">
+                                      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-md sticky top-0">
+                                        <span className={cn("text-[10px] font-mono font-bold", isBoxed ? "text-red-500" : "text-blue-600")}>
+                                          {isBoxed ? '⚠ §0' : `§${rootSec.sectionNumber}`}
+                                        </span>
+                                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide line-clamp-1">{rootSec.title}</span>
+                                        <span className="ml-auto text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold shrink-0">{hits.length}</span>
+                                      </div>
+                                      {hits.map((hit, i) => (
+                                        <button key={i}
+                                          onClick={() => {
+                                            setMonographSearchOpen(false);
+                                            setTimeout(() => {
+                                              // Open the parent root section and scroll to the child
+                                              const rootEl = document.getElementById(`fda-sec-${hit.rootSec.sectionNumber}`);
+                                              if (rootEl?.tagName === 'DETAILS') rootEl.setAttribute('open', 'true');
+                                              const childEl = document.getElementById(`fda-sec-${hit.sec.sectionNumber}`);
+                                              if (childEl?.tagName === 'DETAILS') childEl.setAttribute('open', 'true');
+                                              (childEl || rootEl)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }, 50);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 ml-2 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100 block"
+                                        >
+                                          {hit.sec.sectionNumber !== hit.rootSec.sectionNumber && (
+                                            <span className="text-[9px] font-mono text-slate-400 mr-1">§{hit.sec.sectionNumber}</span>
+                                          )}
+                                          {hit.matchType === 'title' ? (
+                                            <span className="text-[10px] text-slate-400 italic">Matched in title: {hit.sec.title}</span>
+                                          ) : (
+                                            <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                                              {hit.snippet.split(new RegExp(`(${qEscaped})`, 'gi')).map((part: string, k: number) => 
+                                                part.toLowerCase() === q
+                                                  ? <span key={k} className="bg-yellow-200 text-yellow-900 font-semibold px-0.5 rounded">{part}</span> 
+                                                  : <span key={k}>{part}</span>
+                                              )}
+                                            </p>
+                                          )}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            );
                           })()}
                         </div>
                       </div>
