@@ -179,6 +179,7 @@ export async function initPharmaSchema() {
     CREATE TABLE IF NOT EXISTS pharma.ir_clinical_rule (
       id                    SERIAL PRIMARY KEY,
       ingredient_route_id   INT NOT NULL REFERENCES pharma.ingredient_route(id),
+      api_roa_dose_adj      VARCHAR(255),
       legal_status          TEXT,
       otc_conc_guide        TEXT,
       hazardous             BOOLEAN DEFAULT FALSE,
@@ -212,6 +213,8 @@ export async function initPharmaSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_ircr_irid
       ON pharma.ir_clinical_rule(ingredient_route_id);
+    CREATE INDEX IF NOT EXISTS idx_ircr_dose_adj
+      ON pharma.ir_clinical_rule(api_roa_dose_adj);
   `);
 
   // Partial unique index — only one active+approved rule per ingredient_route
@@ -228,6 +231,31 @@ export async function initPharmaSchema() {
       ALTER TABLE pharma.ir_clinical_rule ADD COLUMN IF NOT EXISTS geriatric_alarm TEXT;
     EXCEPTION WHEN duplicate_column THEN NULL;
     END $$;
+  `);
+
+  // Add api_roa_dose_adj column if missing (idempotent) — direct FK bridge to dose adj range tables
+  await pool.query(`
+    DO $$ BEGIN
+      ALTER TABLE pharma.ir_clinical_rule ADD COLUMN IF NOT EXISTS api_roa_dose_adj VARCHAR(255);
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_ircr_dose_adj ON pharma.ir_clinical_rule(api_roa_dose_adj)`);
+
+  // Backfill api_roa_dose_adj from scdf_ingredient for existing rules
+  await pool.query(`
+    UPDATE pharma.ir_clinical_rule cr
+    SET api_roa_dose_adj = sub.dose_adj_key
+    FROM (
+      SELECT DISTINCT ON (si.ingredient_route_id)
+        si.ingredient_route_id,
+        si.api_roa_dose_adj AS dose_adj_key
+      FROM pharma.scdf_ingredient si
+      WHERE si.api_roa_dose_adj IS NOT NULL
+      ORDER BY si.ingredient_route_id, si.rank ASC NULLS LAST
+    ) sub
+    WHERE cr.ingredient_route_id = sub.ingredient_route_id
+      AND cr.api_roa_dose_adj IS NULL;
   `);
 
   // =============================================
