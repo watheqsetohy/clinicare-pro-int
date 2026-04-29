@@ -1778,10 +1778,17 @@ app.get('/api/rxnorm/monograph/:rxcui', requireAuth, async (req, res) => {
         const parentMap = new Map<string, any>();
         const rootSections: any[] = [];
 
-        // Canonical parent titles for synthetic nodes
+        // Canonical parent titles for synthetic nodes (when parent section missing from DB)
         const PARENT_TITLES: Record<string, string> = {
-          '8': 'USE IN SPECIFIC POPULATIONS', '9': 'DRUG ABUSE AND DEPENDENCE',
-          '12': 'CLINICAL PHARMACOLOGY', '13': 'NONCLINICAL TOXICOLOGY',
+          '1': 'INDICATIONS AND USAGE', '2': 'DOSAGE AND ADMINISTRATION',
+          '3': 'DOSAGE FORMS AND STRENGTHS', '4': 'CONTRAINDICATIONS',
+          '5': 'WARNINGS AND PRECAUTIONS', '6': 'ADVERSE REACTIONS',
+          '7': 'DRUG INTERACTIONS', '8': 'USE IN SPECIFIC POPULATIONS',
+          '9': 'DRUG ABUSE AND DEPENDENCE', '10': 'OVERDOSAGE',
+          '11': 'DESCRIPTION', '12': 'CLINICAL PHARMACOLOGY',
+          '13': 'NONCLINICAL TOXICOLOGY', '14': 'CLINICAL STUDIES',
+          '15': 'REFERENCES', '16': 'HOW SUPPLIED/STORAGE AND HANDLING',
+          '17': 'PATIENT COUNSELING INFORMATION',
         };
 
         for (const sec of splSections.rows) {
