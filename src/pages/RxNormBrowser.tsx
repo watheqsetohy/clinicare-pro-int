@@ -3,7 +3,7 @@ import { fetchWithAuth } from '../lib/authSession';
 import {
   Search, Pill, ChevronRight, ChevronDown, Filter, Activity,
   AlertCircle, Database, BarChart2, Tag, Link2, FlaskConical,
-  ArrowRight, CheckCircle2, Info, BookOpen, List, Heart, Shield, Package, FileText, Dna
+  ArrowRight, CheckCircle2, Info, BookOpen, List, Heart, Shield, Package, FileText, Dna, Menu
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 
@@ -87,6 +87,7 @@ export function RxNormBrowser({
   const [monograph, setMonograph]           = useState<any>(null);
   const [monographLoading, setMonographLoading] = useState(false);
   const [activeTab, setActiveTab]           = useState<'overview' | 'relations' | 'attributes' | 'cdss' | 'monograph'>('overview');
+  const [jumpListOpen, setJumpListOpen]     = useState(false);
 
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
@@ -398,36 +399,96 @@ export function RxNormBrowser({
               </div>
 
               {/* Tabs */}
-              <div className="flex gap-6 border-b border-slate-200 bg-white px-6">
-                {[
-                  { id: 'overview', label: 'Names & Forms' },
-                  { id: 'relations', label: 'Relationships' },
-                  { id: 'attributes', label: 'Attributes' },
-                  { id: 'cdss', label: 'CDSS' },
-                  { id: 'monograph', label: 'Clinical Monograph' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={cn(
-                      "flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors",
-                      activeTab === tab.id ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-700"
+              <div className="flex justify-between border-b border-slate-200 bg-white px-6">
+                <div className="flex gap-6">
+                  {[
+                    { id: 'overview', label: 'Names & Forms' },
+                    { id: 'relations', label: 'Relationships' },
+                    { id: 'attributes', label: 'Attributes' },
+                    { id: 'cdss', label: 'CDSS' },
+                    { id: 'monograph', label: 'Clinical Monograph' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={cn(
+                        "flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors",
+                        activeTab === tab.id ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      {tab.label}
+                      {tab.id === 'relations' && concept.relations.length > 0 && (
+                        <span className="ml-1 bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                          {concept.relations.length}
+                        </span>
+                      )}
+                      {tab.id === 'monograph' && monograph?.fdaSections?.length > 0 && (
+                        <span className="ml-1 w-2 h-2 rounded-full bg-blue-500"></span>
+                      )}
+                      {tab.id === 'cdss' && monograph && (monograph.indications?.length > 0 || monograph.contraindications?.length > 0 || monograph.medrtDDI?.length > 0 || monograph.pgxInteractions?.length > 0) && (
+                        <span className="ml-1 w-2 h-2 rounded-full bg-emerald-500"></span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Jump List Toggle Button (only when monograph is active and has sections) */}
+                {activeTab === 'monograph' && monograph?.fdaSections?.length > 0 && (
+                  <div className="relative flex items-center">
+                    <button
+                      onClick={() => setJumpListOpen(!jumpListOpen)}
+                      className={cn(
+                        "p-2 rounded-md transition-colors hover:bg-slate-100",
+                        jumpListOpen ? "bg-slate-100 text-emerald-700" : "text-slate-500"
+                      )}
+                      title="Toggle Jump List"
+                    >
+                      <Menu className="w-5 h-5" />
+                    </button>
+
+                    {/* Jump List Dropdown */}
+                    {jumpListOpen && (
+                      <div className="absolute top-full right-0 mt-1 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-[70vh] flex flex-col overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Monograph Contents</span>
+                        </div>
+                        <div className="overflow-y-auto p-2">
+                          {monograph.fdaSections.map((sec: any) => {
+                            const isBoxed = sec.sectionNumber === '0';
+                            
+                            // Check if it's a sub-section (has a dot) to indent it
+                            const depth = (sec.sectionNumber.match(/\./g) || []).length;
+                            const isSub = depth > 0;
+                            
+                            return (
+                              <button key={sec.sectionNumber}
+                                onClick={() => {
+                                  setJumpListOpen(false);
+                                  document.getElementById(`fda-sec-${sec.sectionNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }}
+                                className={cn(
+                                  'w-full text-left px-3 py-2 rounded-md text-xs font-semibold hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100 flex items-start gap-2',
+                                  isBoxed ? 'text-red-600 bg-red-50/50' : 'text-slate-700',
+                                  isSub ? (depth === 1 ? 'ml-4 w-[calc(100%-1rem)] text-slate-600 text-[11px]' : 'ml-8 w-[calc(100%-2rem)] text-slate-500 text-[10px]') : ''
+                                )}
+                              >
+                                <span className={cn(
+                                  "shrink-0 font-mono font-bold mt-0.5",
+                                  isBoxed ? "text-red-500" : "text-blue-600"
+                                )}>
+                                  {isBoxed ? '⚠ §0' : `§${sec.sectionNumber}`}
+                                </span>
+                                <span className="leading-snug flex-1">
+                                  {sec.title}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
-                  >
-                    {tab.label}
-                    {tab.id === 'relations' && concept.relations.length > 0 && (
-                      <span className="ml-1 bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                        {concept.relations.length}
-                      </span>
-                    )}
-                    {tab.id === 'monograph' && monograph?.fdaSections?.length > 0 && (
-                      <span className="ml-1 w-2 h-2 rounded-full bg-blue-500"></span>
-                    )}
-                    {tab.id === 'cdss' && monograph && (monograph.indications?.length > 0 || monograph.contraindications?.length > 0 || monograph.medrtDDI?.length > 0 || monograph.pgxInteractions?.length > 0) && (
-                      <span className="ml-1 w-2 h-2 rounded-full bg-emerald-500"></span>
-                    )}
-                  </button>
-                ))}
+                  </div>
+                )}
               </div>
 
               {/* Tab Content */}
@@ -837,26 +898,7 @@ export function RxNormBrowser({
                           </div>
                         )}
 
-                        {/* ── FDA Section Jump List ── */}
-                        <div className="bg-white rounded-lg border border-slate-200 p-2 sticky top-0 z-10 shadow-sm">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 px-2 py-1 rounded mr-0.5 shrink-0">FDA</span>
-                            {monograph.fdaSections.map((sec: any) => {
-                              const isBoxed = sec.sectionNumber === '0';
-                              return (
-                                <button key={sec.sectionNumber}
-                                  onClick={() => document.getElementById(`fda-sec-${sec.sectionNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                  className={cn(
-                                    'px-2 py-1 rounded-md text-[11px] font-semibold hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200',
-                                    isBoxed ? 'text-red-600 font-black' : 'text-slate-600'
-                                  )}
-                                >
-                                  {isBoxed ? '⚠ §0' : `§${sec.sectionNumber}`}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+
 
                         {/* FDA Header */}
                         <div className="flex items-center gap-3">
