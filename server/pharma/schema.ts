@@ -213,8 +213,6 @@ export async function initPharmaSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_ircr_irid
       ON pharma.ir_clinical_rule(ingredient_route_id);
-    CREATE INDEX IF NOT EXISTS idx_ircr_dose_adj
-      ON pharma.ir_clinical_rule(api_roa_dose_adj);
   `);
 
   // Partial unique index — only one active+approved rule per ingredient_route
